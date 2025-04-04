@@ -1,6 +1,6 @@
 # The Aviation Herald Scraper
 
-![GitLab Release](https://img.shields.io/gitlab/v/release/thaikolja%2Favherald-scraper) ![GitLab Stars](https://img.shields.io/gitlab/stars/thaikolja%2Favherald-scraper?style=flat&label=gitlab%20stars) ![GitLab Forks](https://img.shields.io/gitlab/forks/thaikolja%2Favherald-scraper?style=flat&label=gitlab%20forks) ![GitHub Repo stars](https://img.shields.io/github/stars/thaikolja/avherald-scraper?label=github%20stars) ![GitHub forks](https://img.shields.io/github/forks/thaikolja/avherald-scraper?label=github%20forks)
+![GitLab Release](https://img.shields.io/gitlab/v/release/thaikolja%2Favherald-scraper) ![GitLab Stars](https://img.shields.io/gitlab/stars/thaikolja%2Favherald-scraper?style=flat&label=gitlab%20stars) ![GitLab Forks](https://img.shields.io/gitlab/forks/thaikolja%2Favherald-scraper?style=flat&label=gitlab%20forks) ![GitHub Repo stars](https://img.shields.io/github/stars/thaikolja/avherald-scraper?style=flat&label=github%20stars) ![GitHub forks](https://img.shields.io/github/forks/thaikolja/avherald-scraper?style=flat&label=github%20forks)
 
 **[The Aviation Herald](https://avherald.com/)** is a website [registered](https://avherald.com/h?impressum=) to the Austrian NOMIS SOFT Data Processing Limited Liability Company that documents aviation accidents and incidents. It's known for its detailed reports, often compiled from various sources. This Python 3 script can be used to extract data from the website by scraping.
 
