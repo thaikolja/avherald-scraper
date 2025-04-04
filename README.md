@@ -34,7 +34,7 @@ To set up the script, use the following steps:
 4. `source venv/bin/activate`
 5. `pip install -r requirements.txt`
 6. Adjust `MAX_PAGES_TO_SCRAPE`, `REQUEST_DELAY_SECONDS`, and `DATABASE_FILE`
-7. Run `python avherald-scraper/main.py`
+7. Run `python avherald_scraper/avherald_scraper.py`
 
 ## License
 
