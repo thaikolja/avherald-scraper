@@ -2,7 +2,7 @@
 # -*- coding: utf-8 -*-
 
 # Copyright (C) 2025 by Kolja Nolte
-# kolja.nolte@email.com
+# kolja.nolte@gmail.com
 # https://kolja-nolte.com
 #
 # This script scrapes incident data from avherald.com.
@@ -14,7 +14,7 @@
 # For more information, see the LICENSE file.
 #
 # Author:    Kolja Nolte
-# Email:     kolja.nolte@email.com
+# Email:     kolja.nolte@gmail.com
 # License:   MIT License
 # Date:      2025
 # Package:   avherald-scraper
