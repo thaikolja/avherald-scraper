@@ -1,8 +1,8 @@
 # -*- coding: utf-8 -*-
 
 # Copyright (C) 2025 by Kolja Nolte
-# kolja.nolte@email.com
-# https://kolja-nolte.com
+# kolja.nolte@gmail.com
+# https://wwww.kolja-nolte.com
 #
 # This script scrapes incident data from avherald.com.
 # Please read the README.md for more information.
@@ -32,7 +32,7 @@ from avherald_scraper import avherald_scraper
 
 #
 # Define the maximum number of pages to scrape
-MAX_PAGES_TO_SCRAPE = 3
+MAX_PAGES_TO_SCRAPE = 1
 
 #
 # Define the delay in seconds between requests
@@ -44,7 +44,7 @@ DATABASE_FILE = './output/data.sqlite'
 
 #
 # Define whether to show detailed output during scraping
-SHOW_DETAILS = False  # Set to False to suppress detailed output
+SHOW_DETAILS = True  # Set to False to suppress detailed output
 
 
 def main():

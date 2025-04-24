@@ -1,8 +1,8 @@
 # -*- coding: utf-8 -*-
 
 # Copyright (C) 2025 by Kolja Nolte
-# kolja.nolte@email.com
-# https://kolja-nolte.com
+# kolja.nolte@gmail.com
+# https://www.kolja-nolte.com
 #
 # This script scrapes incident data from avherald.com.
 # Please read the README.md for more information.
@@ -18,21 +18,30 @@
 # Date:      2025
 # Package:   avherald-scraper
 
+# Import the requests library for making HTTP requests.
 import requests
+
 # Import the BeautifulSoup library for parsing HTML.
 from bs4 import BeautifulSoup
+
 # Import the regular expression library.
 import re
+
 # Import the operating system interface.
 import os
+
 # Import the time module.
 import time
+
 # Import datetime module.
 from datetime import datetime
+
 # Import the URL parsing functions.
 from urllib.parse import urljoin
+
 # Import the SQLite library.
 import sqlite3
+
 # Import calendar module for UTC timestamp.
 import calendar
 
@@ -386,7 +395,7 @@ def insert_incidents(conn, incidents):
 def scrape(
 	max_pages_to_scrape=3,
 	request_delay_seconds=1,
-	database_file='./output/data.sqlite',
+	database_file='../output/data.sqlite',
 	show_details=False
 ):
 	# Connect to the SQLite database.
@@ -447,4 +456,3 @@ def scrape(
 if __name__ == "__main__":
 	# Call the scrape function with specified parameters.
 	scrape(max_pages_to_scrape=1, request_delay_seconds=1, show_details=True)
-
