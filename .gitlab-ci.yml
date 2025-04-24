@@ -1,15 +1,15 @@
 stages:
   - test
+
+image: python:3.13-slim
+
+before_script:
+  - pip install --upgrade pip
+  - pip install .
+  - pip install pytest
+
 test:
-  image: python:3.9-slim
   stage: test
   script:
-    - python -m venv venv
-    - source venv/bin/activate
-    - pip install --upgrade pip
-    - pip install -r requirements.txt
-    - python avherald_scraper/avherald_scraper.py
-  artifacts:
-    paths:
-      - output/
-    expire_in: 1 hour
+    - pytest tests/
+
