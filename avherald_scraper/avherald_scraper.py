@@ -13,7 +13,7 @@
 # For more information, see the LICENSE file.
 #
 # Author:    Kolja Nolte
-# Email:     kolja.nolte@email.com
+# Email:     kolja.nolte@gmail.com
 # License:   MIT License
 # Date:      2025
 # Package:   avherald-scraper
