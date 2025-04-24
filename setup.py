@@ -11,12 +11,12 @@ if readme.exists():
 
 setup(
 	name="avherald-scraper",
-	version="0.1.0",
+	version="1.0.0",
 	description="Scrapes aviation incident data from AV Herald website",
 	long_description=long_description,
 	long_description_content_type="text/markdown",
 	author="Kolja Nolte",
-	author_email="kolja.nolte@email.com",
+	author_email="kolja.nolte@gmail.com",
 	url="https://www.kolja-nolte.com",
 	packages=find_packages(include=["avherald_scraper", "avherald_scraper.*"]),
 	python_requires=">=3.7",
