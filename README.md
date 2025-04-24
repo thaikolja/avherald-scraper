@@ -1,48 +1,149 @@
-# The Aviation Herald Scraper
+# ✈️ The Aviation Herald Scraper
 
-![GitLab Release](https://img.shields.io/gitlab/v/release/thaikolja%2Favherald-scraper) ![GitLab Stars](https://img.shields.io/gitlab/stars/thaikolja%2Favherald-scraper?style=flat&label=gitlab%20stars) ![GitLab Forks](https://img.shields.io/gitlab/forks/thaikolja%2Favherald-scraper?style=flat&label=gitlab%20forks) ![GitHub Repo stars](https://img.shields.io/github/stars/thaikolja/avherald-scraper?style=flat&label=github%20stars) ![GitHub forks](https://img.shields.io/github/forks/thaikolja/avherald-scraper?style=flat&label=github%20forks)
+[![GitLab Release](https://img.shields.io/gitlab/v/release/thaikolja%2Favherald-scraper)](https://gitlab.com/thaikolja/avherald-scraper/-/releases) [![Python Version](https://img.shields.io/badge/Python-3.8%2B-blue.svg)](https://www.python.org/downloads/) [![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](LICENSE) [![GitLab Stars](https://img.shields.io/gitlab/stars/thaikolja%2Favherald-scraper?style=flat&label=gitlab%20stars)](https://gitlab.com/thaikolja/avherald-scraper) [![GitHub Repo stars](https://img.shields.io/github/stars/thaikolja/avherald-scraper?style=flat&label=github%20stars)](https://github.com/thaikolja/avherald-scraper)
 
-**[The Aviation Herald](https://avherald.com/)** is a website [registered](https://avherald.com/h?impressum=) to the Austrian NOMIS SOFT Data Processing Limited Liability Company that documents aviation accidents and incidents. It's known for its detailed reports, often compiled from various sources. This Python 3 script can be used to extract data from the website by scraping.
+**The Aviation Herald Scraper** is a Python tool designed to automatically extract basic incident information from the front page headlines of [avherald.com](https://avherald.com/). Since the website does not offer a public API or RSS feed, this script uses web scraping techniques to gather data. **There is strictly no AI usage in this project**.
 
-## Description
+**Important Note on Copyright:** This script *only* parses the headlines and associated metadata (see "Features" below) visible on the main page(s) under the [Fair Use doctrine](https://en.wikipedia.org/wiki/Fair_use). To respect the website's copyright notice, **it does not scrape the full content of the linked incident reports**. The metadata is stored locally in an SQLite database.
 
-### Scraping
+## 📜 Disclaimer & Copyright
 
-Since avherald.com does not have a [RESTful API](https://aws.amazon.com/what-is/restful-api/), [RSS Feed](https://support.microsoft.com/en-us/office/what-are-rss-feeds-e8aaebc3-a0a7-40cd-9e10-88f9c1e74b97), or other ways to get data without visiting the website, this Python 3 script will extract the data for you using [website scraping](https://www.parsehub.com/blog/what-is-web-scraping/).
-
-Adjust the number of pages in the code at `MAX_PAGES_TO_SCRAPE` to avoid getting blocked immediately. A `REQUEST_DELAY_SECONDS` of `1` second is also a good way to avoid DDoS-lookalike requests, quickly leading to a ban on your IP address.
-
-### Saving
-
-This script stores the information it gathers in an [SQLite database](https://www.simplilearn.com/tutorials/sql-tutorial/what-is-sqlite) called `data.sqlite`. You can set up a CRON job to run this script every 24 hours with `MAX_PAGES_TO_SCRAPE` set to `1`. The script will gather the latest data from the first page while ignoring duplicates.
-
-## Copyright
-
-The Aviation Herald has a copyright protecting its data, stating:
+**[The Aviation Herald](https://avherald.com/)** has a strict copyright notice:
 
 > © 2008-2025 by The Aviation Herald, all rights reserved, reproduction, redistribution and AI learning/use prohibited.
 
-Please be aware of the limitations. This script is, therefore, a **proof of concept** and is **only meant for educational purposes**.
+This script is provided as a **proof of concept** and is intended **only for educational purposes**. Please be mindful of [avherald.com's terms of service](https://avherald.com/h?impressum=) and use this script responsibly. The scraped data should not be redistributed or used for commercial purposes or AI training without permission from The Aviation Herald.
 
-## Usage
+## 🚀 Features
 
-To set up the script, use the following steps:
+*   **📰 Headline Scraping**: Extracts incident headlines from the avherald.com front page.
+*   **📊 Data Extraction**: Parses key details from headlines:
+    *   Incident Category (e.g., `crash`, `incident`, `news`)
+    *   Cleaned Title
+    *   Approximate Location (if mentioned)
+    *   Suspected Cause/Type (if mentioned)
+    *   Incident Date (converted to timestamp)
+    *   Direct URL to the full report on avherald.com
+*   **💾 Local Storage**: Saves extracted data into a local SQLite database (`./output/data.sqlite` by default).
+*   **🚫 Duplicate Prevention**: Avoids adding duplicate entries based on the incident title.
+*   **⚙️ Configurable**: Allows easy configuration of:
+    *   Number of pages to scrape (`MAX_PAGES_TO_SCRAPE`).
+    *   Delay between page requests (`REQUEST_DELAY_SECONDS`) to avoid overloading the server.
+    *   Database file path (`DATABASE_FILE`).
+    *   Verbosity (`SHOW_DETAILS`).
+*   **🤖 Polite Scraping**: Includes a user-agent header and configurable delay.
 
-1. `git clone https://gitlab.com/thaikolja/avherald-scraper.git`
-2. `cd avherald-scraper`
-3. `python3 -m venv venv`
-4. `source venv/bin/activate`
-5. `pip install -r requirements.txt`
-6. Adjust `MAX_PAGES_TO_SCRAPE`, `REQUEST_DELAY_SECONDS`, and `DATABASE_FILE`
-7. Run `python avherald_scraper/avherald_scraper.py`
+## 🛠️ Installation
 
-## License
+Follow these steps to set up and install the necessary dependencies. This guide assumes you have Python 3.8+ and `git` installed.
 
-**The Python code itself is licensed under MIT.**
+1.  **Clone the Repository:**
+    Get the code from the main GitLab repository.
+```bash
+git clone https://gitlab.com/thaikolja/avherald-scraper.git
+cd avherald-scraper
+```
 
-The [MIT License](https://choosealicense.com/licenses/mit/) is a permissive free software license that grants you the freedom to use, modify, and distribute the software, even for commercial purposes. You can do whatever you want with the code as long as you include the original copyright notice and the license text in your distribution.
+2.  **Create a Virtual Environment:**
+    It's highly recommended to use a virtual environment to keep dependencies isolated.
+    
+```bash
+# Create the environment (use python3 if python points to Python 2)
+python -m venv venv
+```
 
-## Authors
+3.  **Activate the Virtual Environment:**
+    1.  On **macOS/Linux**:
+```bash
+source venv/bin/activate
+```
 
-* Kolja Nolte <kolja.nolte@gmail.com>
+You should see `(venv)` at the beginning of your terminal prompt.
+
+4.  **Install Dependencies:**
+    Install all required Python packages listed in `requirements.txt`.
+    ```bash
+    pip install -r requirements.txt
+    ```
+
+## ⚙️ Configuration
+
+Before running the script, you can adjust its behavior by editing the constants at the top of the `main.py` file:
+
+*   `MAX_PAGES_TO_SCRAPE`: (*int*) How many pages of avherald.com to scrape[^1] (e.g., `1` for only the front page, `3` for the first three pages). **Default**: `1`.
+*   `REQUEST_DELAY_SECONDS`: (*int*) Number of seconds to wait between fetching pages. Helps prevent getting blocked. **Default**: `3`.
+*   `DATABASE_FILE`: (*string*) Path where the SQLite database file will be created/updated. **Default**: `'./output/data.sqlite'`.
+*   `SHOW_DETAILS`: (*bool*) Set to `True` to print detailed progress messages during scraping, or `False` to run silently. **Default**: `False`.
+
+## ▶️ Usage
+
+Once installed and configured, run the scraper from the project's root directory:
+
+```bash
+python main.py
+```
+
+### Under the Hood
+
+The script will:
+
+1.  Connect to (or create) the SQLite database specified in `DATABASE_FILE`.
+2.  Create the `incidents` table if it doesn't exist.
+3.  Using Python's [Beautiful Soup library](https://pypi.org/project/beautifulsoup4/), start scraping from the [avherald.com](https://avherald.com/) homepage.
+4.  Fetch and parse headlines for the number of pages specified by `MAX_PAGES_TO_SCRAPE`, pausing between pages according to `REQUEST_DELAY_SECONDS`.
+5.  Insert any *new* incidents found into the database. Duplicates (based on title) will be ignored.
+6.  Print progress if `SHOW_DETAILS` is `True`.
+
+### Example: Daily Update Cron Job
+
+You can set up a cron job (on Linux/macOS) or a scheduled task (on Windows) to run the script once every 24 hours (recommended) and only fetch the latest incidents from the front page, thus reducing unnecessary server load for avherald.com's servers.
+
+1.  Edit `main.py` and set `MAX_PAGES_TO_SCRAPE = 1`.
+2.  [Set up a cron job](https://phoenixnap.com/kb/set-up-cron-job-linux) to execute the `python main.py` command using the correct **absolute paths** for your Python executable (within the `venv/bin` directory) and the script.
+
+## 🧪 Testing
+
+If you use CI/CD pipelines, you should use `pytest` to check if the code works as expected. For that, run the following command from the root directory:
+
+```bash
+pytest tests/
+```
+
+The expected output should be:
+
+```bash
+ ===== 9 passed in 0.15s =====
+```
+
+## 👨‍💻 Author
+
+1.  **Kolja Nolte** <kolja.nolte@gmail.com>
+
+## 🤝 Contributing
+
+Contributions are welcome! If you'd like to improve the scraper, please follow these steps. **You can do this either on GitLab or GitHub.**
+
+1.  Fork the project on GitLab: [https://gitlab.com/thaikolja/avherald-scraper](https://gitlab.com/thaikolja/avherald-scraper)
+2.  Create your feature branch: `git checkout -b feature/AmazingFeature`
+3.  Commit your changes: `git commit -m 'Add some AmazingFeature'`
+4.  Push to the branch: `git push origin feature/AmazingFeature`
+5.  Open a Merge Request on GitLab.
+
+Please ensure your code adheres to the existing style and includes relevant documentation or tests if applicable.
+
+## 📜 License
+
+The Python code for this project is licensed under the **MIT License**. See the `LICENSE` file for complete details.
+
+This license **applies only to the code** itself, **not** to the data scraped from [avherald.com](https://avherald.com/), which remains subject to their copyright.
+
+## 🙏 Acknowledgements
+
+*   **[The Aviation Herald](https://avherald.com/)**: For providing the valuable incident data.
+*   **[Beautiful Soup](https://www.crummy.com/software/BeautifulSoup/)**: For HTML parsing.
+*   **[Requests](https://requests.readthedocs.io/)**: For handling HTTP requests.
+*   **[lxml](https://lxml.de/)**: For efficient XML and HTML parsing.
+
+---
+[^1]: Use this option responsibly to avoid unnecessary traffic for avherald.com's servers and not to get your IP address banned.
 
