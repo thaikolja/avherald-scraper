@@ -339,7 +339,7 @@ def insert_incident(conn, incident):
 	# Skip incidents with the category "news"
 	if incident['category'].lower() == "news":
 		return False
-		
+
 	# Define the SQL query to insert an incident into the database, ignoring duplicates.
 	sql = """
     INSERT OR IGNORE INTO incidents (category, title, location, cause, timestamp, url)
