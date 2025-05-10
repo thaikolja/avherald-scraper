@@ -333,9 +333,13 @@ def create_table_if_not_exists(conn):
 #  *
 #  * @param conn The database connection object.
 #  * @param incident The incident dictionary to insert.
-#  * @return True if inserted, False if skipped (duplicate).
+#  * @return True if inserted, False if skipped (duplicate or news category).
 #  */
 def insert_incident(conn, incident):
+	# Skip incidents with the category "news"
+	if incident['category'].lower() == "news":
+		return False
+		
 	# Define the SQL query to insert an incident into the database, ignoring duplicates.
 	sql = """
     INSERT OR IGNORE INTO incidents (category, title, location, cause, timestamp, url)
