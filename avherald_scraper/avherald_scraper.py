@@ -50,13 +50,13 @@ import sqlite3
 # Import calendar module for UTC timestamp.
 import calendar
 
-env_path = dotenv.find_dotenv('.env', True)
+env_path = dotenv.find_dotenv('.env', False)
 
-if not os.path.exists(env_path):
-	raise FileNotFoundError(
-		f"Could not find .env file."
-		f"Please create one in the root directory based on the .env.example file."
-	)
+# if not os.path.exists(env_path):
+# 	raise FileNotFoundError(
+# 		f"Could not find .env file."
+# 		f"Please create one in the root directory based on the .env.example file."
+# 	)
 
 # Load environment variables from a .env file.
 dotenv.load_dotenv(env_path)
