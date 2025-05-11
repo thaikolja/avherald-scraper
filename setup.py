@@ -4,14 +4,18 @@ import pathlib
 here = pathlib.Path(__file__).parent.resolve()
 
 # load long description from README.md if exists
-long_description = ""
+long_description = (
+	'The Aviation Herald Scraper is a Python tool designed to automatically extract basic incident information from the front page headlines of avherald.com and '
+	'stores them in a local SQLite database.'
+)
+
 readme = here / "README.md"
 if readme.exists():
 	long_description = readme.read_text(encoding="utf-8")
 
 setup(
 	name="avherald-scraper",
-	version="1.0.1",
+	version="1.1.0",
 	description="Scrapes aviation incident data from AV Herald website",
 	long_description=long_description,
 	long_description_content_type="text/markdown",

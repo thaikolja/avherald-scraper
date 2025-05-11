@@ -397,11 +397,10 @@ def insert_incidents(conn, incidents):
 #  * @param show_details Whether to print details during scraping.
 #  */
 def scrape(
-	max_pages_to_scrape=3,
-	request_delay_seconds=1,
+	max_pages_to_scrape=3, request_delay_seconds=0,
 	database_file='../output/data.sqlite',
 	show_details=False
-):
+	):
 	# Connect to the SQLite database.
 	conn = sqlite3.connect(database_file)
 	# Create the 'incidents' table if it doesn't exist.
