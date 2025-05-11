@@ -398,7 +398,7 @@ def insert_incidents(conn, incidents):
 #  */
 def scrape(
 	max_pages_to_scrape=3, request_delay_seconds=3,
-	database_file='/home/api/avherald-scraper/output/data.sqlite',
+	database_file='/home/api/avherald-scraper/output/data.sqlite', # TODO: Make path relative/configurable
 	show_details=True
 ):
 	# Connect to the SQLite database.
