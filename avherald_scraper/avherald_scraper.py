@@ -53,9 +53,9 @@ HEADERS = {
 }
 
 # Check if the output directory exists.
-if not os.path.isdir('./output'):
+if not os.path.isdir('/home/api/avherald-scraper/output'):
 	# Create the output directory if it doesn't exist, allowing intermediate directories to be created.
-	os.makedirs('./output', exist_ok=True)
+	os.makedirs('/home/api/avherald-scraper/output', exist_ok=True)
 
 # Define the regular expression string for matching dates.
 DATE_REGEX_STR = r"(Jan|Feb|Mar|Apr|May|Jun|Jul|Aug|Sep|Oct|Nov|Dec)\s+\d{1,2}(?:st|nd|rd|th)\s+\d{4}"
