@@ -30,22 +30,6 @@ file for storing the scraped data, and whether to display detailed output during
 # Import the avherald_scraper module
 from avherald_scraper import avherald_scraper
 
-#
-# Define the maximum number of pages to scrape
-MAX_PAGES_TO_SCRAPE = 1
-
-#
-# Define the delay in seconds between requests
-REQUEST_DELAY_SECONDS = 3
-
-#
-# Define the path to the database file
-DATABASE_FILE = './output/data.sqlite'
-
-#
-# Define whether to show detailed output during scraping
-SHOW_DETAILS = True  # Set to False to suppress detailed output
-
 
 def main():
 	"""
@@ -54,20 +38,18 @@ def main():
 	This function orchestrates the scraping process by calling the scrape function
 	from the avherald_scraper module with specified configuration parameters.
 	"""
+
 	# Call the scrape function with specified parameters
 	avherald_scraper.scrape(
 		# Specify the maximum number of pages to scrape
-		max_pages_to_scrape=MAX_PAGES_TO_SCRAPE,
+		max_pages_to_scrape=1,
 		# Specify the delay in seconds between requests
-		request_delay_seconds=REQUEST_DELAY_SECONDS,
-		# Specify the path to the database file
-		database_file=DATABASE_FILE,
+		request_delay_seconds=3,
 		# Specify whether to show detailed output
-		show_details=SHOW_DETAILS
+		show_details=True
 	)
 
 
-#
 # Check if the script is being run as the main module
 if __name__ == "__main__":
 	# Call the main function to start the scraping process

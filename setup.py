@@ -9,7 +9,10 @@ long_description = (
 	'stores them in a local SQLite database.'
 )
 
+# load long description from README.md if exists
 readme = here / "README.md"
+
+# load long description from README.md if exists
 if readme.exists():
 	long_description = readme.read_text(encoding="utf-8")
 

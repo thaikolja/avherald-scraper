@@ -1,25 +1,30 @@
 # -*- coding: utf-8 -*-
+"""
+This script scrapes incident data from avherald.com.
 
-# Copyright (C) 2025 by Kolja Nolte
-# kolja.nolte@gmail.com
-# https://www.kolja-nolte.com
-#
-# This script scrapes incident data from avherald.com.
-# Please read the README.md for more information.
-#
-# This work is licensed under the MIT License. You are free to use, share,
-# and adapt this work, provided that you Include the original copyright notice.
-#
-# For more information, see the LICENSE file.
-#
-# Author:    Kolja Nolte
-# Email:     kolja.nolte@gmail.com
-# License:   MIT License
-# Date:      2025
-# Package:   avherald-scraper
+It includes functions for scraping, parsing, and storing incident data in a SQLite database.
+
+Copyright (C) 2025 by Kolja Nolte
+kolja.nolte@gmail.com
+https://www.kolja-nolte.com
+
+This work is licensed under the MIT License. You are free to use, share,
+and adapt this work, provided that you Include the original copyright notice.
+
+For more information, see the LICENSE file.
+
+Author:    Kolja Nolte
+Email:     kolja.nolte@gmail.com
+License:   MIT License
+Date:      2025
+Package:   avherald-scraper
+"""
 
 # Import the requests library for making HTTP requests.
 import requests
+
+# Import the dotenv library for loading environment variables.
+import dotenv
 
 # Import the BeautifulSoup library for parsing HTML.
 from bs4 import BeautifulSoup
@@ -45,33 +50,58 @@ import sqlite3
 # Import calendar module for UTC timestamp.
 import calendar
 
-# Define the base URL for avherald.com.
-BASE_URL = 'https://webproxy.911proxy.com/sencure/WRFbvs7EectrpMbBqVuRF'  # "https://avherald.com/"
-# Define the headers to be sent with the request, mimicking a browser.
-HEADERS = {
-	'User-Agent': 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.114 Safari/537.36'
-}
+env_path = dotenv.find_dotenv('.env', True)
 
-# Check if the output directory exists.
-if not os.path.isdir('/home/api/avherald-scraper/output'):
-	# Create the output directory if it doesn't exist, allowing intermediate directories to be created.
-	os.makedirs('/home/api/avherald-scraper/output', exist_ok=True)
+if not os.path.exists(env_path):
+	raise FileNotFoundError(
+		f"Could not find .env file."
+		f"Please create one in the root directory based on the .env.example file."
+	)
+
+# Load environment variables from a .env file.
+dotenv.load_dotenv(env_path)
+
+# List of required keys from the .env file
+required_keys = [
+	"BASE_URL",
+	"DATABASE_FILE_PATH"
+]
+
+# Check that all required keys are set
+missing_keys = [key for key in required_keys if not os.getenv(key)]
+if missing_keys:
+	raise EnvironmentError(f"Missing required environment variables: {', '.join(missing_keys)}")
+
+# Define the base URL for avherald.com.
+BASE_URL = os.getenv("BASE_URL")
+
+# Define the path to the SQLite database file.
+DATABASE_FILE_PATH = os.getenv("DATABASE_FILE_PATH")
 
 # Define the regular expression string for matching dates.
 DATE_REGEX_STR = r"(Jan|Feb|Mar|Apr|May|Jun|Jul|Aug|Sep|Oct|Nov|Dec)\s+\d{1,2}(?:st|nd|rd|th)\s+\d{4}"
+
 # Compile the date regular expression.
 DATE_REGEX = re.compile(DATE_REGEX_STR)
+
 # Compile the regular expression for removing ordinal suffixes.
 ORDINAL_SUFFIX_REGEX = re.compile(r"(?<=\d)(st|nd|rd|th)")
 
+# Create the output directory from the database file path.
+output_directory = os.path.dirname(DATABASE_FILE_PATH)
 
-# /**
-#  * Converts a date string (e.g. 'Mar 31st 2025') into a UNIX timestamp.
-#  *
-#  * @param date_string The date string to convert.
-#  * @param show_details Whether to print details if parsing fails.
-#  * @return The UNIX timestamp or None if parsing fails.
-#  */
+# Check if the output directory exists.
+if not os.path.isdir(output_directory):
+	# Create the output directory if it doesn't exist, allowing intermediate directories to be created.
+	os.makedirs(output_directory, exist_ok=True)
+
+
+#
+# Converts a date string (e.g. 'Mar 31st 2025') into a UNIX timestamp.
+#
+# @param date_string The date string to convert.
+# @param show_details Whether to print details if parsing fails.
+# @return The UNIX timestamp or None if parsing fails.
 def date_to_timestamp(date_string, show_details=False):
 	# Check if the date string is empty.
 	if not date_string:
@@ -95,13 +125,12 @@ def date_to_timestamp(date_string, show_details=False):
 		return None
 
 
-# /**
-#  * Processes the original title string.
-#  *
-#  * @param original_title The original title string to process.
-#  * @param show_details Whether to print details if parsing fails.
-#  * @return A dict with keys: 'cleaned_title', 'cause', 'date_string', 'location'
-#  */
+#
+# Processes the original title string.
+#
+# @param original_title The original title string to process.
+# @param show_details Whether to print details if parsing fails.
+# @return A dict with keys: 'cleaned_title', 'cause', 'date_string', 'location'
 def process_title(original_title, show_details=False):
 	# Strip leading/trailing whitespace from the title.
 	title = original_title.strip()
@@ -164,26 +193,34 @@ def process_title(original_title, show_details=False):
 	return result
 
 
-# /**
-#  * Scrapes a single page of avherald.com incidents.
-#  *
-#  * @param page_url The URL of the page to scrape.
-#  * @param show_details Whether to print details during scraping.
-#  * @return A tuple: (list_of_incidents_on_page, next_page_url or None)
-#  */
+#
+# Scrapes a single page of avherald.com incidents.
+#
+# @param page_url The URL of the page to scrape.
+# @param show_details Whether to print details during scraping.
+# @return A tuple: (list_of_incidents_on_page, next_page_url or None)
 def scrape_single_page(page_url, show_details=False):
 	# Check if details should be shown.
 	if show_details:
 		# Print the URL being scraped.
 		print(f"Attempting to scrape: {page_url}")
+
 	# Try to fetch the page content.
 	try:
+		# Define the headers to be sent with the request, mimicking a browser.
+		headers = {
+			'User-Agent': 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.114 Safari/537.36'
+		}
+
 		# Make a GET request to the page URL with specified headers and timeout.
-		response = requests.get(page_url, headers=HEADERS, timeout=20)
+		response = requests.get(page_url, headers=headers, timeout=20)
+
 		# Raise an exception for bad status codes.
 		response.raise_for_status()
+
 		# Set the encoding to utf-8.
 		response.encoding = 'utf-8'
+
 	# Catch a Timeout exception.
 	except requests.exceptions.Timeout:
 		# Check if details should be shown.
@@ -305,11 +342,10 @@ def scrape_single_page(page_url, show_details=False):
 	return page_incidents, next_page_url
 
 
-# /**
-#  * Creates the 'incidents' table with the appropriate columns if it doesn't exist.
-#  *
-#  * @param conn The database connection object.
-#  */
+#
+# Creates the 'incidents' table with the appropriate columns if it doesn't exist.
+#
+# @param conn The database connection object.
 def create_table_if_not_exists(conn):
 	# Define the SQL query to create the 'incidents' table if it doesn't exist.
 	sql = """
@@ -328,16 +364,16 @@ def create_table_if_not_exists(conn):
 	conn.commit()
 
 
-# /**
-#  * Inserts an incident into the database.
-#  *
-#  * @param conn The database connection object.
-#  * @param incident The incident dictionary to insert.
-#  * @return True if inserted, False if skipped (duplicate or news category).
-#  */
+#
+# Insert an incident into the database.
+#
+# @param conn The database connection object.
+# @param incident The incident data to insert.
+# @return True if a row was inserted, False otherwise.
 def insert_incident(conn, incident):
 	# Skip incidents with the category "news"
 	if incident['category'].lower() == "news":
+		# Returns False if the category is new.
 		return False
 
 	# Define the SQL query to insert an incident into the database, ignoring duplicates.
@@ -362,13 +398,12 @@ def insert_incident(conn, incident):
 	return cur.rowcount == 1  # True if inserted, False if skipped
 
 
-# /**
-#  * Inserts a list of incidents into the database.
-#  *
-#  * @param conn The database connection object.
-#  * @param incidents A list of incident dictionaries to insert.
-#  * @return A tuple: (inserted_count, skipped_count)
-#  */
+#
+# Inserts a list of incidents into the database.
+#
+# @param conn The database connection object.
+# @param incidents A list of incident dictionaries to insert.
+# @return A tuple: (inserted_count, skipped_count)
 def insert_incidents(conn, incidents):
 	# Initialize the inserted count.
 	inserted = 0
@@ -388,21 +423,16 @@ def insert_incidents(conn, incidents):
 	return inserted, skipped
 
 
-# /**
-#  * Scrapes avherald.com for incident data and stores it in a database.
-#  *
-#  * @param max_pages_to_scrape The maximum number of pages to scrape.
-#  * @param request_delay_seconds The delay in seconds between requests.
-#  * @param database_file The path to the SQLite database file.
-#  * @param show_details Whether to print details during scraping.
-#  */
-def scrape(
-	max_pages_to_scrape=3, request_delay_seconds=3,
-	database_file='/home/api/avherald-scraper/output/data.sqlite', # TODO: Make path relative/configurable
-	show_details=True
-):
+#
+# Scrapes avherald.com for incident data and stores it in a database.
+#
+# @param max_pages_to_scrape The maximum number of pages to scrape.
+# @param request_delay_seconds The delay in seconds between requests.
+# @param database_file The path to the SQLite database file.
+# @param show_details Whether to print details during scraping.
+def scrape(max_pages_to_scrape=3, request_delay_seconds=3, show_details=True):
 	# Connect to the SQLite database.
-	conn = sqlite3.connect(database_file)
+	conn = sqlite3.connect(DATABASE_FILE_PATH)
 	# Create the 'incidents' table if it doesn't exist.
 	create_table_if_not_exists(conn)
 	# Set the initial URL to the base URL.
@@ -452,10 +482,4 @@ def scrape(
 		# Print a message indicating that scraping is finished.
 		print(f"\n--- Finished Scraping ---")
 		# Print the total number of pages scraped.
-		print(f"Scraped a total of {pages_scraped} pages and stored new incidents into {database_file}.")
-
-
-# Check if the script is being run as the main program.
-if __name__ == "__main__":
-	# Call the scrape function with specified parameters.
-	scrape(max_pages_to_scrape=1, request_delay_seconds=1, show_details=True)
+		print(f"Scraped a total of {pages_scraped} pages and stored new incidents into {DATABASE_FILE_PATH}.")
