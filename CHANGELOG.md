@@ -1,10 +1,9 @@
 # Changelog
 
-## v1.1.0
+## v1.0.2
 
-* Added option to use a proxy
+* Changed request URL to go through a proxy to bypasss IP block
 
 ## v1.0.1
 
 * Changed the location of the output to `/output/data.sqlite`
-*

@@ -1,6 +1,6 @@
-/output
+/output/*
 *.sqlite
-.idea/**/*
+.idea
 
 # User-specific stuff
 .idea/**/workspace.xml

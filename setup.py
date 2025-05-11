@@ -15,7 +15,7 @@ if readme.exists():
 
 setup(
 	name="avherald-scraper",
-	version="1.1.0",
+	version="1.0.2",
 	description="Scrapes aviation incident data from AV Herald website",
 	long_description=long_description,
 	long_description_content_type="text/markdown",

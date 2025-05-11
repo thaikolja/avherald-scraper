@@ -46,7 +46,7 @@ import sqlite3
 import calendar
 
 # Define the base URL for avherald.com.
-BASE_URL = "https://avherald.com/"
+BASE_URL = 'https://webproxy.911proxy.com/sencure/WRFbvs7EectrpMbBqVuRF'  # "https://avherald.com/"
 # Define the headers to be sent with the request, mimicking a browser.
 HEADERS = {
 	'User-Agent': 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.114 Safari/537.36'
@@ -400,7 +400,7 @@ def scrape(
 	max_pages_to_scrape=3, request_delay_seconds=0,
 	database_file='../output/data.sqlite',
 	show_details=False
-	):
+):
 	# Connect to the SQLite database.
 	conn = sqlite3.connect(database_file)
 	# Create the 'incidents' table if it doesn't exist.
