@@ -207,13 +207,22 @@ def scrape_single_page(page_url, show_details=False):
 
 	# Try to fetch the page content.
 	try:
+		pw = '01HD9RWD2MJV674ZZ3BR0JSBAN'
+		pw = '01GDK78135NM0F00KS5RV5TSYX'
+
+		user = 'fiPGJc7Sg'
+
+		proxies = {
+			"http": f"//{user}:{pw}@hk-hkg01-ike.provpn.world",
+		}
+
 		# Define the headers to be sent with the request, mimicking a browser.
 		headers = {
 			'User-Agent': 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.114 Safari/537.36'
 		}
 
 		# Make a GET request to the page URL with specified headers and timeout.
-		response = requests.get(page_url, headers=headers, timeout=20)
+		response = requests.get(page_url, headers=headers, proxies=proxies, timeout=20)
 
 		# Raise an exception for bad status codes.
 		response.raise_for_status()
