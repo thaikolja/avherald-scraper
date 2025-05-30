@@ -2,6 +2,7 @@
 !/output/.gitkeep
 *.sqlite
 .idea
+cron.sh
 
 # User-specific stuff
 .idea/**/workspace.xml
