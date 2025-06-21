@@ -50,6 +50,8 @@ import sqlite3
 # Import calendar module for UTC timestamp.
 import calendar
 
+from requests import Session
+
 env_path = dotenv.find_dotenv('.env', False)
 
 # if not os.path.exists(env_path):
@@ -207,28 +209,30 @@ def scrape_single_page(page_url, show_details=False):
 
 	# Try to fetch the page content.
 	try:
-		pw = '01HD9RWD2MJV674ZZ3BR0JSBAN'
-		pw = '01GDK78135NM0F00KS5RV5TSYX'
+		# Remove or keep proxy settings commented as not in use
+		# username = "fiPGJc7Sg"
+		# password = "01GDK78135NM0F00KS5RV5TSYX"
+		# proxy_host = "hk-hkg01-ike.provpn.world"
+		# proxies = { ... }
 
-		user = 'fiPGJc7Sg'
+		session = requests.Session()
+		session.trust_env = False  # Ensure system proxies are ignored
 
-		proxies = {
-			"http": f"//{user}:{pw}@hk-hkg01-ike.provpn.world",
-		}
-
-		# Define the headers to be sent with the request, mimicking a browser.
+		# Add realistic headers to mimic a browser
 		headers = {
-			'User-Agent': 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.114 Safari/537.36'
+			"User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/116.0.5845.188 Safari/537.36"
 		}
 
-		# Make a GET request to the page URL with specified headers and timeout.
-		response = requests.get(page_url, headers=headers, proxies=proxies, timeout=20)
-
-		# Raise an exception for bad status codes.
-		response.raise_for_status()
-
-		# Set the encoding to utf-8.
-		response.encoding = 'utf-8'
+		response = None  # Initialize response to safely handle failures
+		try:
+			response = session.get(page_url, headers=headers, timeout=10)
+			response.raise_for_status()
+			if show_details:
+				print("Response received:", response.text)
+		except requests.exceptions.RequestException as e:
+			print("Request failed:", e)
+		except Exception as outer_error:
+			print("An unexpected error occurred:", outer_error)
 
 	# Catch a Timeout exception.
 	except requests.exceptions.Timeout:
