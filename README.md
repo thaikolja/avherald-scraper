@@ -1,149 +1,102 @@
-# ✈️ The Aviation Herald Scraper
+# The Aviation Herald Scraper
 
-[![GitLab Release](https://img.shields.io/gitlab/v/release/thaikolja%2Favherald-scraper)](https://gitlab.com/thaikolja/avherald-scraper/-/releases) [![Python Version](https://img.shields.io/badge/Python-3.8%2B-blue.svg)](https://www.python.org/downloads/) [![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](LICENSE) [![GitLab Stars](https://img.shields.io/gitlab/stars/thaikolja%2Favherald-scraper?style=flat&label=gitlab%20stars)](https://gitlab.com/thaikolja/avherald-scraper) [![GitHub Repo stars](https://img.shields.io/github/stars/thaikolja/avherald-scraper?style=flat&label=github%20stars)](https://github.com/thaikolja/avherald-scraper)
+Python 3.11+ tool that walks [avherald.com](https://avherald.com/) **list pages** and stores headline metadata in a local SQLite database.
 
-**The Aviation Herald Scraper** is a Python tool designed to automatically extract basic incident information from the front page headlines of [avherald.com](https://avherald.com/). Since the website does not offer a public API or RSS feed, this script uses web scraping techniques to gather data. **There is strictly no AI usage in this project**.
+The site has no public API. This scraper only reads what is visible on the listing: article URL, heading, group date, and category icon. **It does not fetch or store article bodies.** There is no AI usage in this project.
 
-**Important Note on Copyright:** This script *only* parses the headlines and associated metadata (see "Features" below) visible on the main page(s) under the [Fair Use doctrine](https://en.wikipedia.org/wiki/Fair_use). To respect the website's copyright notice, **it does not scrape the full content of the linked incident reports**. The metadata is stored locally in an SQLite database.
+## Copyright
 
-## 📜 Disclaimer & Copyright
+> © 2008-2026 by The Aviation Herald, all rights reserved, reproduction, redistribution and AI learning/use prohibited.
 
-**[The Aviation Herald](https://avherald.com/)** has a strict copyright notice:
+Use this as a personal/educational headline archive. Do not redistribute the data, train models on it, or scrape full reports.
 
-> © 2008-2025 by The Aviation Herald, all rights reserved, reproduction, redistribution and AI learning/use prohibited.
+`robots.txt` disallows `/` for `User-agent: *`. Keep crawls small, delayed, and headline-only.
 
-This script is provided as a **proof of concept** and is intended **only for educational purposes**. Please be mindful of [avherald.com's terms of service](https://avherald.com/h?impressum=) and use this script responsibly. The scraped data should not be redistributed or used for commercial purposes or AI training without permission from The Aviation Herald.
+## How listing URLs work
 
-## 🚀 Features
+Article links look like:
 
-*   **📰 Headline Scraping**: Extracts incident headlines from the avherald.com front page.
-*   **📊 Data Extraction**: Parses key details from headlines:
-    *   Incident Category (e.g., `crash`, `incident`, `news`)
-    *   Cleaned Title
-    *   Approximate Location (if mentioned)
-    *   Suspected Cause/Type (if mentioned)
-    *   Incident Date (converted to timestamp)
-    *   Direct URL to the full report on avherald.com
-*   **💾 Local Storage**: Saves extracted data into a local SQLite database (`./output/data.sqlite` by default).
-*   **🚫 Duplicate Prevention**: Avoids adding duplicate entries based on the incident title.
-*   **⚙️ Configurable**: Allows easy configuration of:
-    *   Number of pages to scrape (`MAX_PAGES_TO_SCRAPE`).
-    *   Delay between page requests (`REQUEST_DELAY_SECONDS`) to avoid overloading the server.
-    *   Database file path (`DATABASE_FILE`).
-    *   Verbosity (`SHOW_DETAILS`).
-*   **🤖 Polite Scraping**: Includes a user-agent header and configurable delay.
-
-## 🛠️ Installation
-
-Follow these steps to set up and install the necessary dependencies. This guide assumes you have Python 3.8+ and `git` installed.
-
-1.  **Clone the Repository:**
-    Get the code from the main GitLab repository.
-```bash
-git clone https://gitlab.com/thaikolja/avherald-scraper.git
-cd avherald-scraper
+```
+https://avherald.com/h?article=53f3f5aa&opt=0
 ```
 
-2.  **Create a Virtual Environment:**
-    It's highly recommended to use a virtual environment to keep dependencies isolated.
-    
+`article` is an opaque 8-character hex id (the primary key). `opt` is a list-view flag and is **not** stored. The crawler does **not** enumerate hex ids.
+
+Later pages are reached by following the Next image (`/images/next.jpg`). The `offset` query is `timestamp+last_article_id` on the previous page; it is followed, not constructed.
+
+A listing row is kept only when the link contains `span.headline_avherald` and the table row has a category icon (`incident.gif`, `accident.gif`, `crash.gif`, `news.gif`, `report.gif`). Footer/interview links are ignored.
+
+## Install
+
 ```bash
-# Create the environment (use python3 if python points to Python 2)
-python -m venv venv
+python -m venv .venv
+source .venv/bin/activate
+pip install -e ".[dev]"
 ```
 
-3.  **Activate the Virtual Environment:**
-    1.  On **macOS/Linux**:
-```bash
-source venv/bin/activate
-```
+Copy `.env.example` to `.env` if you want to override paths or set `HTTPS_PROXY`.
 
-You should see `(venv)` at the beginning of your terminal prompt.
-
-4.  **Install Dependencies:**
-    Install all required Python packages listed in `requirements.txt`.
-    ```bash
-    pip install -r requirements.txt
-    ```
-
-## ⚙️ Configuration
-
-Before running the script, you can adjust its behavior by editing the constants at the top of the `main.py` file:
-
-*   `MAX_PAGES_TO_SCRAPE`: (*int*) How many pages of avherald.com to scrape[^1] (e.g., `1` for only the front page, `3` for the first three pages). **Default**: `1`.
-*   `REQUEST_DELAY_SECONDS`: (*int*) Number of seconds to wait between fetching pages. Helps prevent getting blocked. **Default**: `3`.
-*   `DATABASE_FILE`: (*string*) Path where the SQLite database file will be created/updated. **Default**: `'./output/data.sqlite'`.
-*   `SHOW_DETAILS`: (*bool*) Set to `True` to print detailed progress messages during scraping, or `False` to run silently. **Default**: `False`.
-
-## ▶️ Usage
-
-Once installed and configured, run the scraper from the project's root directory:
+## Usage
 
 ```bash
+python -m avherald_scraper
+python -m avherald_scraper -n 200 -c incident --sort occurrence
+python -m avherald_scraper --dry-run -n 20 -v
 python main.py
 ```
 
-### Under the Hood
+No flags: 50 latest headlines (all categories, sort by update) into `data/avherald.sqlite`. Re-run the same command to fetch the **next** 50; the scraper stores the list-page position and skips `article_id`s already in the database.
 
-The script will:
+Copy `.env.example` to `.env` to keep settings in one place.
 
-1.  Connect to (or create) the SQLite database specified in `DATABASE_FILE`.
-2.  Create the `incidents` table if it doesn't exist.
-3.  Using Python's [Beautiful Soup library](https://pypi.org/project/beautifulsoup4/), start scraping from the [avherald.com](https://avherald.com/) homepage.
-4.  Fetch and parse headlines for the number of pages specified by `MAX_PAGES_TO_SCRAPE`, pausing between pages according to `REQUEST_DELAY_SECONDS`.
-5.  Insert any *new* incidents found into the database. Duplicates (based on title) will be ignored.
-6.  Print progress if `SHOW_DETAILS` is `True`.
+From PyCharm, edit the `OPTIONS` list at the top of `main.py` and press Run. Command-line flags passed to `main.py` replace that list.
 
-### Example: Daily Update Cron Job
+Optional `avherald.toml` in the project directory (copy `avherald.toml.example`). Precedence: **CLI > env > toml > defaults**.
 
-You can set up a cron job (on Linux/macOS) or a scheduled task (on Windows) to run the script once every 24 hours (recommended) and only fetch the latest incidents from the front page, thus reducing unnecessary server load for avherald.com's servers.
+| Flag | Default | Meaning |
+| --- | --- | --- |
+| `-n`, `--limit` | `50` | Unique articles to keep |
+| `-p`, `--pages` | none | Stop after N list pages |
+| `-c`, `--category` | all | `crash`, `accident`, `incident`, `news`, `report` (repeat or CSV) |
+| `--sort` | `update` | `update` or `occurrence` |
+| `-o`, `--db` | `data/avherald.sqlite` | SQLite file |
+| `-d`, `--delay` | `3` | Seconds between list-page requests |
+| `--proxy` | env `HTTPS_PROXY` | HTTP(S) proxy |
+| `--timeout` | `20` | Request timeout seconds |
+| `--dry-run` | off | Parse and print, do not write SQLite |
+| `--resume` / `--no-resume` | on | Continue from the last saved list page |
+| `--fresh` | off | Ignore the saved position and start from the first list page |
+| `--config` | `./avherald.toml` if present | TOML defaults |
+| `--start-url` | built from `--sort` / `--category` | Override first list page |
+| `-v`, `--verbose` | off | Print each fetched URL and kept rows |
+| `-q`, `--quiet` | off | Print nothing on success |
 
-1.  Edit `main.py` and set `MAX_PAGES_TO_SCRAPE = 1`.
-2.  [Set up a cron job](https://phoenixnap.com/kb/set-up-cron-job-linux) to execute the `python main.py` command using the correct **absolute paths** for your Python executable (within the `venv/bin` directory) and the script.
+If the site returns the “unauthorized accesses / Botnet” page, the process exits with an error. Pass `--proxy` or set `HTTPS_PROXY`, then retry.
 
-## 🧪 Testing
+## Database
 
-If you use CI/CD pipelines, you should use `pytest` to check if the code works as expected. For that, run the following command from the root directory:
-
-```bash
-pytest tests/
+```sql
+SELECT article_id, category, list_date_iso, heading, url FROM articles LIMIT 5;
+SELECT COUNT(*) FROM articles;
 ```
 
-The expected output should be:
+| Column | Content |
+| --- | --- |
+| `article_id` | 8 hex chars |
+| `url` | `https://avherald.com/h?article=<id>` |
+| `heading` | Listing headline |
+| `list_date` | Date heading printed above the row |
+| `list_date_iso` | `YYYY-MM-DD` |
+| `icon` | e.g. `incident.gif` |
+| `category` | e.g. `incident` |
+| `first_seen_at` / `last_seen_at` | UTC ISO-8601 |
+
+`article_id` is the primary key (one row per article). Re-runs skip ids that are already stored and continue from the saved list page in `crawl_state`. Use `--fresh` to start from the first page again (still no duplicate rows).
+
+## Tests
 
 ```bash
- ===== 9 passed in 0.15s =====
+pytest -v
 ```
 
-## 👨‍💻 Author
-
-1.  **Kolja Nolte** <kolja.nolte@gmail.com>
-
-## 🤝 Contributing
-
-Contributions are welcome! If you'd like to improve the scraper, please follow these steps. **You can do this either on GitLab or GitHub.**
-
-1.  Fork the project on GitLab: [https://gitlab.com/thaikolja/avherald-scraper](https://gitlab.com/thaikolja/avherald-scraper)
-2.  Create your feature branch: `git checkout -b feature/AmazingFeature`
-3.  Commit your changes: `git commit -m 'Add some AmazingFeature'`
-4.  Push to the branch: `git push origin feature/AmazingFeature`
-5.  Open a Merge Request on GitLab.
-
-Please ensure your code adheres to the existing style and includes relevant documentation or tests if applicable.
-
-## 📜 License
-
-The Python code for this project is licensed under the **MIT License**. See the `LICENSE` file for complete details.
-
-This license **applies only to the code** itself, **not** to the data scraped from [avherald.com](https://avherald.com/), which remains subject to their copyright.
-
-## 🙏 Acknowledgements
-
-*   **[The Aviation Herald](https://avherald.com/)**: For providing the valuable incident data.
-*   **[Beautiful Soup](https://www.crummy.com/software/BeautifulSoup/)**: For HTML parsing.
-*   **[Requests](https://requests.readthedocs.io/)**: For handling HTTP requests.
-*   **[lxml](https://lxml.de/)**: For efficient XML and HTML parsing.
-
----
-[^1]: Use this option responsibly to avoid unnecessary traffic for avherald.com's servers and not to get your IP address banned.
-
+Parser and crawl tests use saved HTML fixtures and never hit the network.

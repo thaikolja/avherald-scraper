@@ -1,6 +1,9 @@
 /output/*
 !/output/.gitkeep
+/data/*
+!/data/.gitkeep
 *.sqlite
+.env
 .idea
 cron.sh
 
