@@ -1,3 +1,4 @@
+import type {} from 'docus'
 import type { ModuleOptions as ImageOptions } from '@nuxt/image'
 import type { ModuleOptions as RobotsOptions } from '@nuxtjs/robots'
 import type { ModuleOptions as SiteOptions } from 'nuxt-site-config'
