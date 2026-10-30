@@ -17,7 +17,7 @@ test:
 
 pages:
   stage: deploy
-  image: node:22-bookworm
+  image: oven/bun:1.4.4
   needs:
     - test
   rules:
@@ -27,8 +27,8 @@ pages:
     - apt-get install -y --no-install-recommends python3 make g++
   script:
     - cd docs
-    - npm ci
-    - NUXT_APP_BASE_URL=/ NUXT_PUBLIC_SITE_URL=https://avherald-scraper-af5e68.gitlab.io npm run generate
+    - bun install --frozen-lockfile
+    - NUXT_APP_BASE_URL=/ NUXT_PUBLIC_SITE_URL=https://avherald-scraper-af5e68.gitlab.io bun run generate
     - mkdir -p ../public
     - cp -a .output/public/. ../public/
   artifacts:
