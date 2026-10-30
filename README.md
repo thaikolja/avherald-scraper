@@ -42,9 +42,9 @@ avherald-scraper --dry-run --limit 20 --verbose
 avherald-scraper --help
 ```
 
-With no arguments the command stores 50 headlines, in every category, sorted by last update, in `data/avherald.sqlite`.
+With no arguments the command stores the number of headlines set in `config.ini` (currently 10), in every category, sorted by last update, in `data/avherald.sqlite`.
 
-Run the same command again to take the next 50. The previous list-page position is kept, and an `article_id` that is already stored does not count toward `--limit`. `--fresh` returns to the first list page. Rows remain unique.
+Run the same command again to take the next batch. The previous list-page position is kept, and an `article_id` that is already stored does not count toward `--limit`. `--fresh` returns to the first list page. Rows remain unique.
 
 `python -m avherald_scraper` invokes the same entry point.
 

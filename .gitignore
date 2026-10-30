@@ -3,7 +3,6 @@
 /data/*
 !/data/.gitkeep
 *.sqlite
-.env
 .idea
 cron.sh
 
