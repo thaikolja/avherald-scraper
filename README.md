@@ -151,4 +151,4 @@ pytest
 
 Tests read saved HTML fixtures and do not contact the network. GitLab CI runs that install and `pytest tests/` on Python 3.13.
 
-See [CONTRIBUTING.md](CONTRIBUTING.md). The documentation site lives in `docs/` and is published from `main` to GitLab Pages and GitHub Pages.
+See [CONTRIBUTING.md](CONTRIBUTING.md). The documentation site lives in `docs/` and is published at [https://docs.kolja-nolte.com/avherald-scraper/](https://docs.kolja-nolte.com/avherald-scraper/). GitLab Pages and GitHub Pages stay available as well.

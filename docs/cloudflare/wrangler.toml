@@ -1,0 +1,8 @@
+name = "docs-kolja-nolte"
+main = "worker.js"
+compatibility_date = "2026-10-31"
+
+routes = [
+  { pattern = "docs.kolja-nolte.com/avherald-scraper*", zone_name = "kolja-nolte.com" },
+  { pattern = "docs.kolja-nolte.com/", zone_name = "kolja-nolte.com" },
+]

@@ -39,7 +39,7 @@ jobs:
           bun-version: 1.4.4
       - run: bun install --frozen-lockfile
         working-directory: docs
-      - run: NUXT_APP_BASE_URL=/avherald-scraper/ NUXT_PUBLIC_SITE_URL=https://thaikolja.github.io bun run generate
+      - run: NUXT_APP_BASE_URL=/avherald-scraper/ NUXT_PUBLIC_SITE_URL=https://docs.kolja-nolte.com bun run generate
         working-directory: docs
       - uses: actions/upload-pages-artifact@v3
         with:
