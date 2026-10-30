@@ -64,10 +64,10 @@ CATEGORIES = tuple(CATEGORY_OPT)
 
 # First page for this sort order and these category filters.
 def list_page_url(
-    base_url: str,
-    *,
-    sort: str = "update",
-    categories: tuple[str, ...] | list[str] = (),
+        base_url: str,
+        *,
+        sort: str = "update",
+        categories: tuple[str, ...] | list[str] = (),
 ) -> str:
     """Build a list-page URL from a sort order and category filters."""
 
@@ -122,9 +122,9 @@ def canonical_article_url(article_id: str, *, base_url: str = SITE_ORIGIN) -> st
 
 # Pull an article id out of a href, or give up when it isn't one.
 def parse_article_href(
-    href: str | None,
-    *,
-    base_url: str = SITE_ORIGIN,
+        href: str | None,
+        *,
+        base_url: str = SITE_ORIGIN,
 ) -> ArticleRef | None:
     """Return an ArticleRef when href is an 8-hex article listing link."""
 
@@ -141,8 +141,8 @@ def parse_article_href(
 
     # `/h` is the usual article path. Anything else must still end in `/h`.
     if (
-        path not in (ARTICLE_PATH, f"{ARTICLE_PATH}/")
-        and not path.endswith(ARTICLE_PATH)
+            path not in (ARTICLE_PATH, f"{ARTICLE_PATH}/")
+            and not path.endswith(ARTICLE_PATH)
     ):
         # Login links, footer links, and the list page itself stop here.
         return None

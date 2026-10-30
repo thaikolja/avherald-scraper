@@ -22,6 +22,8 @@ def _record(**overrides) -> ArticleRecord:
 def test_init_creates_articles_table(tmp_path: Path):
     db = Database(tmp_path / "avherald.sqlite")
     db.init()
+    mode = db.conn.execute("PRAGMA journal_mode").fetchone()[0]
+    assert mode == "wal"
     names = {
         row[0]
         for row in db.conn.execute(
@@ -98,6 +100,38 @@ def test_upsert_updates_existing_and_keeps_first_seen(tmp_path: Path):
         ("53f3f5aa",),
     ).fetchone()
     assert row["heading"] == "ANZ B789 at Auckland, updated heading"
+    assert row["first_seen_at"] == "2026-08-30T12:00:00+00:00"
+    assert row["last_seen_at"] == "2026-08-31T09:00:00+00:00"
+    db.close()
+
+
+def test_upsert_many_counts_inserts_and_updates(tmp_path: Path):
+    db = Database(tmp_path / "avherald.sqlite")
+    db.init()
+    first = [
+        _record(article_id=f"53f3f5{index:02x}", url=f"https://avherald.com/h?article=53f3f5{index:02x}")
+        for index in range(20)
+    ]
+    inserted, updated = db.upsert_many(first, now="2026-08-30T12:00:00+00:00")
+    assert inserted == 20
+    assert updated == 0
+    changed = [
+        _record(
+            article_id=f"53f3f5{index:02x}",
+            url=f"https://avherald.com/h?article=53f3f5{index:02x}",
+            heading="updated",
+        )
+        for index in range(5)
+    ]
+    inserted, updated = db.upsert_many(changed, now="2026-08-31T09:00:00+00:00")
+    assert inserted == 0
+    assert updated == 5
+    assert db.count() == 20
+    row = db.conn.execute(
+        "SELECT first_seen_at, last_seen_at, heading FROM articles WHERE article_id = ?",
+        ("53f3f500",),
+    ).fetchone()
+    assert row["heading"] == "updated"
     assert row["first_seen_at"] == "2026-08-30T12:00:00+00:00"
     assert row["last_seen_at"] == "2026-08-31T09:00:00+00:00"
     db.close()

@@ -48,8 +48,11 @@ from avherald_scraper.config import (
     DEFAULT_INI_NAME,
     DEFAULT_LIMIT,
     DEFAULT_REQUEST_DELAY_SECONDS,
+    DEFAULT_TIMEOUT_SECONDS,
+    RunConfig,
     load_config,
     parse_categories,
+    resolve_ini_path,
 )
 
 # A blocked IP is reported on its own, separate from a generic failure.
@@ -104,7 +107,7 @@ Settings live in config.ini. CLI flags win.
         type=int,
         default=None,
         metavar="N",
-        help=f"unique articles to keep (default: {DEFAULT_LIMIT})",
+        help=f"unique articles to keep (config.ini, else {DEFAULT_LIMIT})",
     )
 
     # A page cap on top of the article limit. Also defaults to "unset".
@@ -115,7 +118,7 @@ Settings live in config.ini. CLI flags win.
         default=None,
         dest="max_pages",
         metavar="N",
-        help="stop after N list pages (default: no page cap)",
+        help="stop after N list pages (config.ini, else no page cap)",
     )
 
     # Second help group: what to fetch.
@@ -128,7 +131,7 @@ Settings live in config.ini. CLI flags win.
         action="append",
         dest="categories",
         metavar="NAME",
-        help=f"repeat or comma-separate: {', '.join(CATEGORIES)}",
+        help=f"repeat or comma-separate: {', '.join(CATEGORIES)} (config.ini, else all)",
     )
 
     # Choices reject a typo before we build a URL.
@@ -136,7 +139,7 @@ Settings live in config.ini. CLI flags win.
         "--sort",
         choices=("update", "occurrence"),
         default=None,
-        help="list order on avherald.com (default: update)",
+        help="list order on avherald.com (config.ini, else update)",
     )
 
     # Bypasses the sort/category URL builder when you already have a list URL.
@@ -156,7 +159,7 @@ Settings live in config.ini. CLI flags win.
         type=Path,
         default=None,
         dest="database_path",
-        help=f"SQLite file (default: {DEFAULT_DATABASE_PATH})",
+        help=f"SQLite file (config.ini, else {DEFAULT_DATABASE_PATH})",
     )
 
     # Float, because 0.5 is a legal pause even though the default is 3.
@@ -165,14 +168,23 @@ Settings live in config.ini. CLI flags win.
         "--delay",
         type=float,
         default=None,
-        help=f"seconds between page requests (default: {DEFAULT_REQUEST_DELAY_SECONDS})",
+        help=f"seconds between page requests (config.ini, else {DEFAULT_REQUEST_DELAY_SECONDS})",
     )
 
     # Wins over the proxy line in config.ini, because CLI is applied last.
-    where.add_argument("--proxy", default=None, help="HTTP(S) proxy URL")
+    where.add_argument(
+        "--proxy",
+        default=None,
+        help="HTTP(S) proxy URL (config.ini, else unset)",
+    )
 
     # Passed through to httpx.
-    where.add_argument("--timeout", type=float, default=None, help="request timeout seconds")
+    where.add_argument(
+        "--timeout",
+        type=float,
+        default=None,
+        help=f"request timeout seconds (config.ini, else {DEFAULT_TIMEOUT_SECONDS})",
+    )
 
     # Replaces the identifiable tool User-Agent.
     where.add_argument(
@@ -187,7 +199,7 @@ Settings live in config.ini. CLI flags win.
         "--dry-run",
         action=argparse.BooleanOptionalAction,
         default=None,
-        help="parse and print, do not write the database",
+        help="parse and print, do not write the database (config.ini, else off)",
     )
 
     # On by default, but the default is applied later so config.ini can turn it off.
@@ -195,7 +207,7 @@ Settings live in config.ini. CLI flags win.
         "--resume",
         action=argparse.BooleanOptionalAction,
         default=None,
-        help="continue from the last saved list page (default: on)",
+        help="continue from the last saved list page (config.ini, else on)",
     )
 
     # Drops the saved list position when it is also a real write.
@@ -203,7 +215,7 @@ Settings live in config.ini. CLI flags win.
         "--fresh",
         action=argparse.BooleanOptionalAction,
         default=None,
-        help="ignore the saved position and start from the first list page",
+        help="ignore the saved position and start from the first list page (config.ini, else off)",
     )
 
     # Last group: how chatty the process is.
@@ -215,7 +227,7 @@ Settings live in config.ini. CLI flags win.
         "--verbose",
         action=argparse.BooleanOptionalAction,
         default=None,
-        help="print each fetched URL",
+        help="list the kept headlines (config.ini, else off)",
     )
 
     # Success prints nothing. Errors still go to stderr.
@@ -225,6 +237,13 @@ Settings live in config.ini. CLI flags win.
         action=argparse.BooleanOptionalAction,
         default=None,
         help="print nothing on success",
+    )
+
+    # Prints the merged settings and exits before any download.
+    output.add_argument(
+        "--show-config",
+        action="store_true",
+        help="print effective settings and exit",
     )
 
     # main() parses argv with this.
@@ -252,6 +271,17 @@ def main(argv: list[str] | None = None) -> int:
 
         # 2 means the run never started.
         return 2
+
+    # Show the merged settings and stop. No download, no database.
+    if args.show_config:
+        # Same lookup load_config just used.
+        ini_path = resolve_ini_path(config_path=args.config)
+
+        # stdout, so a user can pipe the settings.
+        print(_format_show_config(config, ini_path))
+
+        # 0 because this is a successful read, not a crawl.
+        return 0
 
     # From here on, failures are crawl failures.
     try:
@@ -319,30 +349,88 @@ def _cli_overrides(args: argparse.Namespace) -> dict:
     }
 
 
+def _format_show_config(config: RunConfig, ini_path: Path | None) -> str:
+    """Render the settings a run would use, without starting that run."""
+
+    # Name the file, or say we fell back to built-in defaults.
+    source = str(ini_path) if ini_path else "none (built-in defaults)"
+
+    # Empty categories mean the crawl keeps every icon type.
+    categories = ", ".join(config.categories) if config.categories else "all"
+
+    # None means there is no page cap.
+    pages = str(config.max_pages) if config.max_pages is not None else "none"
+
+    # Do not print the proxy URL. Say only whether one is configured.
+    proxy = "set" if config.proxy else "unset"
+
+    # One fact per line, stable order.
+    lines = [
+        f"config: {source}",
+        f"limit: {config.limit}",
+        f"pages: {pages}",
+        f"categories: {categories}",
+        f"sort: {config.sort}",
+        f"database: {config.database_path}",
+        f"delay: {config.delay}",
+        f"timeout: {config.timeout}",
+        f"proxy: {proxy}",
+        f"resume: {str(config.resume).lower()}",
+        f"fresh: {str(config.fresh).lower()}",
+        f"dry_run: {str(config.dry_run).lower()}",
+        f"start_url: {config.resolved_start_url()}",
+    ]
+
+    # The CLI prints this with one print() call.
+    return "\n".join(lines)
+
+
 def _format_summary(result: ScrapeResult, config) -> str:
-    """Build the one-line human summary printed after a successful run."""
+    """Build the short tally printed after a successful run."""
 
-    # Category names in alphabetical order, with a count beside each.
-    counts = result.category_counts()
+    # Kept is the number the user asked for. Always show it.
+    parts = [f"{len(result.records)} kept"]
 
-    # "none" reads better than an empty pair of parentheses.
-    breakdown = ", ".join(f"{name} {n}" for name, n in sorted(counts.items())) or "none"
+    # New rows are the point of the run.
+    if result.inserted:
+        # Skip the word when nothing was inserted.
+        parts.append(f"{result.inserted} new")
+
+    # Updates are rarer. Hide the zero.
+    if result.updated:
+        # A refresh of a headline already stored.
+        parts.append(f"{result.updated} updated")
+
+    # Duplicates did not count toward the limit.
+    if result.skipped_duplicate:
+        # Only mention them when the crawl actually stepped over some.
+        parts.append(f"{result.skipped_duplicate} skipped")
+
+    # Category filter drops. Hidden when the filter matched everything.
+    if result.filtered:
+        # So a tight category filter does not look like a short site.
+        parts.append(f"{result.filtered} filtered")
+
+    # One row of counts.
+    lines = ["   ".join(parts)]
 
     # Dry runs must not look like they wrote the file.
-    target = "dry-run (not saved)" if config.dry_run else str(config.database_path)
+    if config.dry_run:
+        # No path, no stored total.
+        lines.append("dry-run")
 
-    # Only mention a resume when we actually opened a saved URL.
-    resumed = f" Resumed from {result.resumed_from}." if result.resumed_from else ""
+    # A real write names the file and how big it is now.
+    else:
+        # stored includes older runs.
+        lines.append(f"{config.database_path}   {result.stored} stored")
 
-    # One string. The CLI prints it as a single paragraph.
-    return (
-        f"Kept {len(result.records)} of {result.parsed} listing row(s) "
-        f"from {result.pages_fetched} page(s) ({breakdown}). "
-        f"inserted {result.inserted}, updated {result.updated}, "
-        f"skipped {result.skipped_duplicate} duplicate(s), "
-        f"filtered {result.filtered}. "
-        f"{target}: {result.stored} stored.{resumed}"
-    )
+    # Only when this run opened a saved list page.
+    if result.resumed_from:
+        # The URL itself is noise. The fact of a resume is enough.
+        lines.append("resumed")
+
+    # The CLI prints this as one block.
+    return "\n".join(lines)
 
 
 def _format_records(result: ScrapeResult) -> str:

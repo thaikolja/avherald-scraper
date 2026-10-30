@@ -208,6 +208,19 @@ def parse_categories(value: str | list[str] | tuple[str, ...] | None) -> tuple[s
     return tuple(ordered)
 
 
+def resolve_ini_path(
+        cwd: Path | None = None,
+        config_path: str | Path | None = None,
+) -> Path | None:
+    """Return the config.ini this run would read, if that file exists."""
+
+    # Same rules as load_config, so --show-config names the real file.
+    root = cwd or Path.cwd()
+
+    # None means built-in defaults only.
+    return _resolve_ini_path(root, config_path)
+
+
 def load_config(
         *,
         cli: Mapping[str, Any] | None = None,

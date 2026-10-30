@@ -78,10 +78,10 @@ def is_blocked(html: str) -> bool:
 
 
 def parse_list_page(
-    html: str,
-    *,
-    source_page: str,
-    base_url: str = DEFAULT_BASE_URL,
+        html: str,
+        *,
+        source_page: str,
+        base_url: str = DEFAULT_BASE_URL,
 ) -> tuple[list[ArticleRecord], str | None]:
     """Pull headline rows and the next-page URL out of one listing."""
 
@@ -160,11 +160,11 @@ def _date_heading(row: Tag) -> str | None:
 
 
 def _article_from_row(
-    row: Tag,
-    *,
-    current_date: str | None,
-    source_page: str,
-    base_url: str,
+        row: Tag,
+        *,
+        current_date: str | None,
+        source_page: str,
+        base_url: str,
 ) -> ArticleRecord | None:
     """Build one record from a leaf row, or None when the row doesn't qualify."""
 

@@ -22,6 +22,5 @@ from avherald_scraper.cli import main
 
 # Skip this when another module imports us.
 if __name__ == "__main__":
-
     # Hand the process status straight back to the shell.
     raise SystemExit(main())

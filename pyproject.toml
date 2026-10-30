@@ -11,6 +11,8 @@ dependencies = [
     "beautifulsoup4>=4.15.0",
     "lxml>=6.1.3",
     "httpx>=0.28.1",
+    # 4.15.1 stops AnyIO's pytest plugin importing the removed CallSpec2 name.
+    "anyio>=4.15.1",
 ]
 
 [project.optional-dependencies]

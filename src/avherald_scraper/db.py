@@ -112,8 +112,14 @@ class Database:
         # Cheap insurance. This schema doesn't use foreign keys today.
         self.conn.execute("PRAGMA foreign_keys = ON")
 
+        # Wait instead of failing when another process has the file open.
+        self.conn.execute("PRAGMA busy_timeout = 5000")
+
     def init(self) -> None:
         """Create the tables and indexes if this file is new."""
+
+        # Readers don't block writers. Fetch the result so the pragma finishes.
+        self.conn.execute("PRAGMA journal_mode = WAL").fetchone()
 
         # The script is idempotent, so an existing database just gets migrated
         # forward by the IF NOT EXISTS clauses.
@@ -188,13 +194,13 @@ class Database:
         )
 
     def save_checkpoint(
-        self,
-        crawl_key: str,
-        *,
-        resume_url: str | None,
-        last_article_id: str | None,
-        completed: bool,
-        now: str | None = None,
+            self,
+            crawl_key: str,
+            *,
+            resume_url: str | None,
+            last_article_id: str | None,
+            completed: bool,
+            now: str | None = None,
     ) -> None:
         """Insert or replace the bookmark for this crawl key."""
 
@@ -235,18 +241,26 @@ class Database:
         self.conn.commit()
 
     def upsert_many(
-        self,
-        records: list[ArticleRecord],
-        *,
-        now: str | None = None,
+            self,
+            records: list[ArticleRecord],
+            *,
+            now: str | None = None,
     ) -> tuple[int, int]:
         """Insert new rows and refresh rows we already have.
 
         Returns `(inserted, updated)`.
         """
 
+        # Nothing to write. Skip the id lookup.
+        if not records:
+            # The caller still expects a pair of counts.
+            return 0, 0
+
         # One timestamp for the whole batch, so a run shares a last_seen_at.
         timestamp = now or datetime.now(UTC).replace(microsecond=0).isoformat()
+
+        # One read for the whole batch, not one SELECT per row.
+        known = self.article_ids()
 
         # Counted separately so the CLI can print both numbers.
         inserted = 0
@@ -257,6 +271,9 @@ class Database:
         # The same id can appear twice in one batch. Keep the first copy.
         seen_in_batch: set[str] = set()
 
+        # Bound rows for the single executemany below.
+        rows: list[tuple] = []
+
         # Order matches the listing, which is the order the crawl collected.
         for record in records:
             # A duplicate inside this batch would just write the same row twice.
@@ -264,94 +281,57 @@ class Database:
                 # Skip it. It is not an insert and not an update.
                 continue
 
-            # Remember it before we touch the database.
+            # Remember it before we count it.
             seen_in_batch.add(record.article_id)
 
-            # Existing ids keep first_seen_at and refresh the other columns.
-            if self._exists(record.article_id):
-                # Heading, date, and category can change between visits.
-                self._update(record, timestamp)
-
+            # Already stored. The conflict clause will refresh it.
+            if record.article_id in known:
                 # Tell the summary this was a refresh.
                 updated += 1
 
             # New id.
             else:
-                # first_seen_at and last_seen_at both start at this timestamp.
-                self._insert(record, timestamp)
-
                 # Tell the summary this was new.
                 inserted += 1
+
+            # first_seen_at is inserted only. The conflict update leaves it alone.
+            rows.append(
+                (
+                    record.article_id,
+                    record.url,
+                    record.heading,
+                    record.list_date,
+                    record.list_date_iso,
+                    record.icon,
+                    record.category,
+                    record.source_page,
+                    timestamp,
+                    timestamp,
+                )
+            )
+
+        # One statement for the batch. Conflict keeps the original first_seen_at.
+        self.conn.executemany(
+            """
+            INSERT INTO articles (
+                article_id, url, heading, list_date, list_date_iso,
+                icon, category, source_page, first_seen_at, last_seen_at
+            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+            ON CONFLICT(article_id) DO UPDATE SET
+                url = excluded.url,
+                heading = excluded.heading,
+                list_date = excluded.list_date,
+                list_date_iso = excluded.list_date_iso,
+                icon = excluded.icon,
+                category = excluded.category,
+                source_page = excluded.source_page,
+                last_seen_at = excluded.last_seen_at
+            """,
+            rows,
+        )
 
         # One commit for the batch, not one per row.
         self.conn.commit()
 
         # The crawl report prints these.
         return inserted, updated
-
-    def _exists(self, article_id: str) -> bool:
-        """True when this id is already in the articles table."""
-
-        # SELECT 1 stops as soon as SQLite finds the key.
-        row = self.conn.execute(
-            "SELECT 1 FROM articles WHERE article_id = ?",
-            (article_id,),
-        ).fetchone()
-
-        # None means the id is new.
-        return row is not None
-
-    def _insert(self, record: ArticleRecord, timestamp: str) -> None:
-        """Write a brand-new article row."""
-
-        # Both seen-at columns use the same timestamp on the first visit.
-        self.conn.execute(
-            """
-            INSERT INTO articles (
-                article_id, url, heading, list_date, list_date_iso,
-                icon, category, source_page, first_seen_at, last_seen_at
-            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
-            """,
-            (
-                record.article_id,
-                record.url,
-                record.heading,
-                record.list_date,
-                record.list_date_iso,
-                record.icon,
-                record.category,
-                record.source_page,
-                timestamp,
-                timestamp,
-            ),
-        )
-
-    def _update(self, record: ArticleRecord, timestamp: str) -> None:
-        """Refresh a stored article and leave `first_seen_at` untouched."""
-
-        # The WHERE clause is the primary key, so this hits one row.
-        self.conn.execute(
-            """
-            UPDATE articles SET
-                url = ?,
-                heading = ?,
-                list_date = ?,
-                list_date_iso = ?,
-                icon = ?,
-                category = ?,
-                source_page = ?,
-                last_seen_at = ?
-            WHERE article_id = ?
-            """,
-            (
-                record.url,
-                record.heading,
-                record.list_date,
-                record.list_date_iso,
-                record.icon,
-                record.category,
-                record.source_page,
-                timestamp,
-                record.article_id,
-            ),
-        )

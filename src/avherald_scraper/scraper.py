@@ -24,6 +24,9 @@ Stored ids are skipped and do not count toward the limit. The bookmark in
 # Annotations can mention classes defined further down.
 from __future__ import annotations
 
+# Progress goes to stderr so the summary on stdout stays pipe-friendly.
+import sys
+
 # Used only to tally categories for the CLI summary.
 from collections import Counter
 
@@ -184,10 +187,13 @@ def run(config: RunConfig, *, client: HtmlFetcher | None = None) -> ScrapeResult
             # Only this sort/category key. Other bookmarks stay.
             db.clear_checkpoint(config.crawl_key())
 
+    # Draws on a terminal. Quiet runs and pipes leave it blank.
+    progress = _Progress(config)
+
     # The database and the HTTP client both need closing if we opened them.
     try:
         # Walk pages until the limit, the page cap, or the end of the list.
-        crawl = _crawl(fetcher, config=config, db=db)
+        crawl = _crawl(fetcher, config=config, db=db, progress=progress)
 
         # Dry runs report zeros for the write counters.
         inserted = updated = stored = 0
@@ -210,6 +216,9 @@ def run(config: RunConfig, *, client: HtmlFetcher | None = None) -> ScrapeResult
 
     # Close even when the download or the parser raises.
     finally:
+        # End the bar line so the next message starts on a fresh row.
+        progress.close()
+
         # A dry run with no existing file never opened a connection.
         if db is not None:
             # Release the SQLite file before we return.
@@ -236,29 +245,116 @@ def run(config: RunConfig, *, client: HtmlFetcher | None = None) -> ScrapeResult
         resumed_from=crawl.resumed_from,
     )
 
-    # Verbose mode prints a one-line log in addition to the CLI summary.
-    if config.verbose:
-        # Prefer the bookmark we resumed from, otherwise the normal start URL.
-        where = crawl.resumed_from or config.resolved_start_url()
-
-        # One line, easy to grep.
-        print(
-            f"start={where} pages={crawl.pages_fetched} parsed={crawl.parsed} "
-            f"kept={len(crawl.records)} inserted={inserted} updated={updated} "
-            f"skipped_duplicate={crawl.skipped} filtered={crawl.filtered} "
-            f"stored={stored}"
-        )
-
     # The CLI formats this for humans.
     return result
 
 
+def render_progress(*, kept: int, limit: int, skipped: int, width: int = 20) -> str:
+    """Build the progress bar text for one moment in the crawl."""
+
+    # A zero limit would divide by zero. Treat it as a full bar once anything is kept.
+    total = limit if limit > 0 else max(kept, 1)
+
+    # Never draw past the end of the track.
+    filled = int(width * min(kept, total) / total)
+
+    # Block characters when the terminal can print them. Otherwise ASCII.
+    full, empty = _bar_glyphs()
+
+    # The track itself.
+    bar = full * filled + empty * (width - filled)
+
+    # Skipped ids matter only when there were some.
+    extra = f"  skipped {skipped}" if skipped else ""
+
+    # kept/limit is the number the user asked for.
+    return f"{bar}  {kept}/{total}{extra}"
+
+
+def _bar_glyphs() -> tuple[str, str]:
+    """Pick bar characters the stderr encoding can actually print."""
+
+    # Capture's encoding can be missing in tests.
+    encoding = getattr(sys.stderr, "encoding", None) or "utf-8"
+
+    # Solid and empty blocks. Fall back when the stream is ASCII.
+    try:
+        "█░".encode(encoding)
+
+    # ASCII terminals still get a readable track.
+    except UnicodeEncodeError:
+        # Hash and dash are the portable pair.
+        return "#", "-"
+
+    # Unicode track.
+    return "█", "░"
+
+
+class _Progress:
+    """One in-place bar on stderr. Silent when quiet or not a terminal."""
+
+    def __init__(self, config: RunConfig):
+        """Remember the run settings and that nothing has been drawn yet."""
+
+        # Quiet and the article limit live here.
+        self._config = config
+
+        # True after the first paint, so close() knows a newline is owed.
+        self._drawn = False
+
+        # Previous line length, so a shorter update erases the tail.
+        self._width = 0
+
+    def update(self, *, kept: int, skipped: int) -> None:
+        """Redraw the bar for the latest kept and skipped counts."""
+
+        # `--quiet` owns silence.
+        if self._config.quiet:
+            # Leave the terminal alone.
+            return
+
+        # Pipes and test capture get the final summary only.
+        if not sys.stderr.isatty():
+            # A bar of carriage returns would corrupt a log.
+            return
+
+        # The visible track.
+        line = render_progress(kept=kept, limit=self._config.limit, skipped=skipped)
+
+        # Spaces clear whatever the previous paint left past this line.
+        pad = " " * max(0, self._width - len(line))
+
+        # Stay on the same row.
+        print(f"\r{line}{pad}", end="", file=sys.stderr, flush=True)
+
+        # Remember that close() must finish the row.
+        self._drawn = True
+
+        # The next paint may be shorter.
+        self._width = len(line)
+
+    def close(self) -> None:
+        """Move off the bar line once the crawl stops."""
+
+        # Nothing was painted.
+        if not self._drawn:
+            # No blank line before the summary.
+            return
+
+        # The summary starts underneath the finished bar.
+        print(file=sys.stderr)
+
+        # A second close, from a nested finally, stays quiet.
+        self._drawn = False
+
+
 # Walk pages until the limit, the page cap, or the end of the list.
 def _crawl(
-    fetcher: HtmlFetcher,
-    *,
-    config: RunConfig,
-    db: Database | None,
+        fetcher: HtmlFetcher,
+        *,
+        config: RunConfig,
+        db: Database | None,
+        progress: _Progress,
 ) -> _Crawl:
     """Download list pages and collect rows that still count toward the limit."""
 
@@ -304,11 +400,6 @@ def _crawl(
         if config.max_pages is not None and pages_fetched >= config.max_pages:
             # Leave resume_url pointing at the page we did not fetch.
             break
-
-        # Verbose prints the URL before the request, so a stall is obvious.
-        if config.verbose:
-            # stdout, same place as the final summary.
-            print(f"Fetching {url}")
 
         # Raises BlockedError when the site returns the ban page.
         html = fetcher.get(url)
@@ -367,7 +458,7 @@ def _crawl(
             # The limit can fall in the middle of a page.
             if len(collected) >= config.limit:
                 # Rows after this one on the same page.
-                remaining = rows[index + 1 :]
+                remaining = rows[index + 1:]
 
                 # If one of those would also have been kept, stay on this URL.
                 has_more_unknown = any(
@@ -387,6 +478,9 @@ def _crawl(
 
                 # The limit is filled.
                 break
+
+        # Move the bar. Quiet runs and pipes ignore this.
+        progress.update(kept=len(collected), skipped=skipped)
 
         # The while-loop also has to stop. `break` above only left the for-loop.
         if stopped_mid:
@@ -431,7 +525,7 @@ def _crawl(
 
 # Choose the opening URL, and whether this run should stop at the first known id.
 def _start_url(
-    config: RunConfig, db: Database | None
+        config: RunConfig, db: Database | None
 ) -> tuple[str, str | None, bool]:
     """Pick the first URL, and whether this run is just checking for new rows.
 

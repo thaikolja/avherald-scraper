@@ -1,7 +1,7 @@
 from pathlib import Path
 
 from avherald_scraper.config import RunConfig
-from avherald_scraper.scraper import run
+from avherald_scraper.scraper import render_progress, run
 
 PAGE_ONE_NEXT = "https://avherald.com/h?list=&opt=0&offset=20260821192052%2B53e33032"
 
@@ -223,3 +223,14 @@ def test_dry_run_does_not_write_database(tmp_path: Path, list_page_html: str):
     assert result.stored == 0
     assert len(result.records) == 2
     assert not db_path.exists()
+
+
+def test_render_progress_tracks_the_limit():
+    line = render_progress(kept=5, limit=10, skipped=2, width=10)
+    track, count, skipped = line.split("  ")
+    assert len(track) == 10
+    assert count == "5/10"
+    assert skipped == "skipped 2"
+    quiet = render_progress(kept=0, limit=10, skipped=0, width=10)
+    assert "skipped" not in quiet
+    assert quiet.endswith("0/10")
