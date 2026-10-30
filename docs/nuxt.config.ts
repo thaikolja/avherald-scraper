@@ -1,10 +1,11 @@
-/// <reference path="./.nuxt/nuxt.node.d.ts" />
+/// <reference path="./nuxt-modules.d.ts" />
 
 import { defineNuxtConfig } from 'nuxt/config'
 
 const siteUrl = process.env.NUXT_PUBLIC_SITE_URL || 'https://thaikolja.gitlab.io'
 
 export default defineNuxtConfig({
+  extends: ['docus'],
   site: {
     url: siteUrl,
     name: 'The Aviation Herald Scraper',

@@ -4,13 +4,14 @@
   "type": "module",
   "packageManager": "bun@1.4.4",
   "scripts": {
-    "dev": "bun scripts/sync-content.mjs && nuxt dev --extends docus",
-    "build": "bun scripts/sync-content.mjs && nuxt build --extends docus",
-    "generate": "bun scripts/sync-content.mjs && nuxt generate --extends docus",
-    "preview": "nuxt preview --extends docus"
+    "dev": "bun scripts/sync-content.mjs && nuxt dev",
+    "build": "bun scripts/sync-content.mjs && nuxt build",
+    "generate": "bun scripts/sync-content.mjs && nuxt generate",
+    "prepare": "nuxt prepare",
+    "preview": "nuxt preview"
   },
   "dependencies": {
-    "better-sqlite3": "^12.5.0",
+    "better-sqlite3": "13.0.3",
     "docus": "latest",
     "nuxt": "^4.2.2"
   },
