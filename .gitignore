@@ -1,8 +1,11 @@
 /output/*
 !/output/.gitkeep
+/data/*
+!/data/.gitkeep
 *.sqlite
 .idea
 cron.sh
+AGENTS.md
 
 # User-specific stuff
 .idea/**/workspace.xml
@@ -17,6 +20,9 @@ cron.sh
 # Generated files
 .idea/**/contentModel.xml
 
+# Copyright and file header
+.idea/copyright/*.xml
+
 # Sensitive or high-churn files
 .idea/**/dataSources/
 .idea/**/dataSources.ids
@@ -29,19 +35,6 @@ cron.sh
 # Gradle
 .idea/**/gradle.xml
 .idea/**/libraries
-
-# Gradle and Maven with auto-import
-# When using Gradle or Maven with auto-import, you should exclude module files,
-# since they will be recreated, and may cause churn.  Uncomment if using
-# auto-import.
-# .idea/artifacts
-# .idea/compiler.xml
-# .idea/jarRepositories.xml
-# .idea/modules.xml
-# .idea/*.iml
-# .idea/modules
-# *.iml
-# *.ipr
 
 # CMake
 cmake-build-*/
@@ -68,7 +61,7 @@ atlassian-ide-plugin.xml
 .idea/sonarlint/
 
 # Crashlytics plugin (for Android Studio and IntelliJ)
-com_crashlytics_export_strings.xml
+co  m_crashlytics_export_strings.xml
 crashlytics.properties
 crashlytics-build.properties
 fabric.properties

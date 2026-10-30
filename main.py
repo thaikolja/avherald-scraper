@@ -1,56 +1,46 @@
-# -*- coding: utf-8 -*-
+"""Editor shortcut for running the scraper with a saved flag list.
 
-# Copyright (C) 2025 by Kolja Nolte
-# kolja.nolte@gmail.com
-# https://wwww.kolja-nolte.com
-#
-# This script scrapes incident data from avherald.com.
-# Please read the README.md for more information.
-#
-# This work is licensed under the MIT License. You are free to use, share,
-# and adapt this work, provided that you Include the original copyright notice.
-#
-# For more information, see the LICENSE file.
-#
-# Author:    Kolja Nolte
-# Email:     kolja.nolte@email.com
-# License:   MIT License
-# Date:      2025
-# Package:   avherald-scraper
-
-"""
-Module Docstring: main.py
-
-This script serves as the entry point for scraping aviation accident data from AV Herald.
-It configures and initiates the scraping process, allowing users to specify parameters
-such as the maximum number of pages to scrape, the delay between requests, the database
-file for storing the scraped data, and whether to display detailed output during the scraping.
+The supported command is still `avherald-scraper`. This file is only here so
+an IDE Run button has something to point at.
 """
 
-# Import the avherald_scraper module
-from avherald_scraper import avherald_scraper
+#  @name:           The Aviation Herald (avherald)
+#  @description     Unofficial CLI tool to scrape data from avherald.com and store it in a .sqlite database.
+#  @author          Kolja Nolte <kolja.nolte@gmail.com>
+#  @copyright       2025-2026 (C) Kolja Nolte
+#  @see             https://docs.kolja-nolte.com/av-herald
+#
+#  This program is free software; you can redistribute it and/or modify
+#  it under the terms of the GNU General Public License as published by
+#  the Free Software Foundation; either version 2 of the License, or
+#  (at your option) any later version.
+#
+#  Released under the GNU General Public License v2 or later.
+#  See: https://www.gnu.org/licenses/gpl-2.0.html
+#
+#  @package AVH
+#  @license GPL-2.0-or-later
 
+# Needed so we can read whatever was typed after `python main.py`.
+import sys
 
-def main():
-	"""
-	Function Docstring: main()
+# The real program. This file does not scrape anything itself.
+from avherald_scraper.cli import main
 
-	This function orchestrates the scraping process by calling the scrape function
-	from the avherald_scraper module with specified configuration parameters.
-	"""
+# Used only when this file is started with no extra CLI arguments.
+OPTIONS = [
+    "-n", "50",
+    "-v",
+    # "-c", "incident",
+    # "-c", "accident",
+    # "--sort", "occurrence",
+    # "--dry-run",
+    # "--fresh",
+    # "--pages", "2",
+    # "--proxy", "http://127.0.0.1:8080",
+]
 
-	# Call the scrape function with specified parameters
-	avherald_scraper.scrape(
-		# Specify the maximum number of pages to scrape
-		max_pages_to_scrape=1,
-		# Specify the delay in seconds between requests
-		request_delay_seconds=3,
-		# Specify whether to show detailed output
-		show_details=True
-	)
-
-
-# Check if the script is being run as the main module
+# Run when the file is executed, not when it is imported.
 if __name__ == "__main__":
-	# Call the main function to start the scraping process
-	main()
+    # Extra arguments replace OPTIONS. No arguments means use the list above.
+    raise SystemExit(main(sys.argv[1:] or OPTIONS))

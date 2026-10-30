@@ -1,15 +1,36 @@
 stages:
   - test
+  - deploy
 
-image: python:3.13-slim
-
-before_script:
-  - pip install --upgrade pip
-  - pip install .
-  - pip install -r requirements.txt
-  - pip install pytest
+workflow:
+  rules:
+    - if: $CI_PIPELINE_SOURCE == "merge_request_event"
+    - if: $CI_COMMIT_BRANCH
 
 test:
   stage: test
+  image: python:3.13-slim
   script:
-    - pytest tests/
+    - python -m pip install --upgrade pip
+    - python -m pip install -e ".[dev]"
+    - pytest
+
+pages:
+  stage: deploy
+  image: node:22-bookworm
+  needs:
+    - test
+  rules:
+    - if: $CI_COMMIT_BRANCH == "main"
+  before_script:
+    - apt-get update
+    - apt-get install -y --no-install-recommends python3 make g++
+  script:
+    - cd docs
+    - npm ci
+    - NUXT_APP_BASE_URL=/avherald-scraper/ NUXT_PUBLIC_SITE_URL=https://thaikolja.gitlab.io npm run generate
+    - mkdir -p ../public
+    - cp -a .output/public/. ../public/
+  artifacts:
+    paths:
+      - public
