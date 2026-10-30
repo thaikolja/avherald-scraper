@@ -4,5 +4,4 @@ compatibility_date = "2026-10-30"
 
 routes = [
   { pattern = "docs.kolja-nolte.com/avherald-scraper*", zone_name = "kolja-nolte.com" },
-  { pattern = "docs.kolja-nolte.com/", zone_name = "kolja-nolte.com" },
 ]

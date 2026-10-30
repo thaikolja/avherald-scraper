@@ -5,10 +5,6 @@ export default {
   async fetch(request) {
     const incoming = new URL(request.url)
 
-    if (incoming.pathname === '/' || incoming.pathname === '') {
-      return Response.redirect(`${incoming.origin}${PREFIX}/`, 302)
-    }
-
     if (incoming.pathname !== PREFIX && !incoming.pathname.startsWith(`${PREFIX}/`)) {
       return new Response('Not found', { status: 404 })
     }
