@@ -5,6 +5,7 @@
 *.sqlite
 .idea
 cron.sh
+AGENTS.md
 
 # User-specific stuff
 .idea/**/workspace.xml

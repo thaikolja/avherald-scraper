@@ -169,7 +169,7 @@ Settings live in config.ini. CLI flags win.
         choices=OUTPUT_FORMATS,
         default=None,
         dest="output_format",
-        help="output type: sqlite, json, csv, or xlsx (config.ini, else sqlite)",
+        help="output type: sqlite, json, csv, xlsx, or cli (config.ini, else sqlite)",
     )
 
     # Float, because 0.5 is a legal pause even though the default is 3.
@@ -321,8 +321,16 @@ def main(argv: list[str] | None = None) -> int:
         # One paragraph: counts, path, and whether we resumed.
         print(_format_summary(result, config))
 
+        # cli format prints the few kept rows in the terminal.
+        if config.output_format == "cli":
+            # A blank line separates the tally from the headlines.
+            print()
+
+            # Spaced blocks, meant for a handful of items.
+            print(_format_cli_records(result))
+
         # Dry runs and verbose runs also list the kept rows.
-        if config.dry_run or config.verbose:
+        elif config.dry_run or config.verbose:
             # One line per article.
             print(_format_records(result))
 
@@ -476,3 +484,37 @@ def _format_records(result: ScrapeResult) -> str:
 
     # The CLI prints this with one print() call.
     return "\n".join(lines)
+
+
+def _format_cli_records(result: ScrapeResult) -> str:
+    """Render a few headlines as spaced blocks for the terminal."""
+
+    # An empty crawl still needs something to print.
+    if not result.records:
+        # Same empty marker as the compact list.
+        return "(no rows)"
+
+    # One block per headline, with air between them.
+    blocks = []
+
+    # Listing order.
+    for index, record in enumerate(result.records, start=1):
+        # Date and category can be missing on a thin row.
+        date = record.list_date_iso or ""
+
+        # Same for the icon name.
+        category = record.category or ""
+
+        # Number, then category and date, then the headline, then the URL.
+        blocks.append(
+            f"{index}\n"
+            "\n"
+            f"    {category}    {date}\n"
+            "\n"
+            f"    {record.heading}\n"
+            "\n"
+            f"    {record.url}"
+        )
+
+    # Two blank lines between items.
+    return "\n\n\n".join(blocks)

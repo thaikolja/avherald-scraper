@@ -55,7 +55,7 @@ DEFAULT_REQUEST_DELAY_SECONDS = 3.0
 DEFAULT_LIMIT = 50
 
 # The file the command writes. sqlite is the working database.
-OUTPUT_FORMATS = ("sqlite", "json", "csv", "xlsx")
+OUTPUT_FORMATS = ("sqlite", "json", "csv", "xlsx", "cli")
 
 # Passed to httpx. A hung connection should not stall forever.
 DEFAULT_TIMEOUT_SECONDS = 20.0
@@ -436,7 +436,7 @@ def _apply(config: RunConfig, updates: Mapping[str, Any]) -> RunConfig:
         if fmt not in OUTPUT_FORMATS:
             # main() prints this and exits 2.
             raise ValueError(
-                "format must be sqlite, json, csv, or xlsx, "
+                "format must be sqlite, json, csv, xlsx, or cli, "
                 f"not {cleaned['output_format']!r}"
             )
 

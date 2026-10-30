@@ -227,7 +227,7 @@ def run(config: RunConfig, *, client: HtmlFetcher | None = None) -> ScrapeResult
             stored = db.count()
 
             # sqlite is the store. Other formats are a sibling file.
-            if config.output_format != "sqlite":
+            if config.output_format in ("json", "csv", "xlsx"):
                 # Written before the connection closes.
                 export_path = export_articles(db, config.output_format, path)
 

@@ -63,7 +63,7 @@ Sources apply in this order: command-line flags, [`config.ini`](config.ini), bui
 | `-c`, `--category` | all | `crash`, `accident`, `incident`, `news`, `report`; repeat the flag or pass a comma-separated list |
 | `--sort` | `update` | `update` or `occurrence` |
 | `-o`, `--db` | `data/avherald.sqlite` | SQLite store. Resume always uses this file |
-| `--format` | `sqlite` | Output type: `sqlite`, `json`, `csv`, `xlsx` |
+| `--format` | `sqlite` | Output type: `sqlite`, `json`, `csv`, `xlsx`, `cli` |
 | `-d`, `--delay` | `3` | Seconds between list-page requests |
 | `--proxy` | direct | HTTP(S) proxy URL; repeat or comma-separate. A ban tries the next host |
 | `--timeout` | `20` | Request timeout in seconds |
@@ -84,7 +84,7 @@ Sources apply in this order: command-line flags, [`config.ini`](config.ini), bui
 | --- | --- | --- |
 | `base_url` | `site` | |
 | `database` | `storage` | `-o`, `--db` |
-| `format` | `storage` | `--format` (`sqlite`, `json`, `csv`, `xlsx`) |
+| `format` | `storage` | `--format` (`sqlite`, `json`, `csv`, `xlsx`, `cli`) |
 
 `json`, `csv`, and `xlsx` are written next to the SQLite file (`data/avherald.json` and so on). Resume still uses the SQLite file. Apple Pages (`.pages`) has no open file format this program can write. Open the `.xlsx` or `.csv` in Pages instead.
 | `limit` | `crawl` | `-n`, `--limit` |

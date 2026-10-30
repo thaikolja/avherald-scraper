@@ -1,7 +1,9 @@
 import pytest
 
-from avherald_scraper.cli import build_parser, main
+from avherald_scraper.cli import _format_cli_records, build_parser, main
 from avherald_scraper.config import load_config
+from avherald_scraper.models import ArticleRecord
+from avherald_scraper.scraper import ScrapeResult
 
 
 def test_cli_help_exits_zero():
@@ -60,6 +62,32 @@ def test_show_config_exits_without_writing_database(tmp_path, capsys):
     assert "proxy: direct" in out
     assert str(ini) in out
     assert list(tmp_path.glob("*.sqlite")) == []
+
+
+def test_cli_format_spaces_each_headline():
+    result = ScrapeResult(
+        pages_fetched=1,
+        parsed=1,
+        inserted=1,
+        updated=0,
+        stored=1,
+        skipped_duplicate=0,
+        records=(
+            ArticleRecord(
+                article_id="53f3f5aa",
+                url="https://avherald.com/h?article=53f3f5aa",
+                heading="ANZ brakes fault",
+                list_date=None,
+                list_date_iso="2026-08-30",
+                icon="incident.gif",
+                category="incident",
+                source_page="https://avherald.com/",
+            ),
+        ),
+    )
+    text = _format_cli_records(result)
+    assert text.startswith("1\n")
+    assert "\n\n    incident    2026-08-30\n\n    ANZ brakes fault\n\n    https://" in text
 
 
 def test_help_points_at_config_ini_for_defaults():
