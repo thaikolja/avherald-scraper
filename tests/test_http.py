@@ -35,6 +35,45 @@ def test_get_sleeps_before_second_request(list_page_html: str):
     assert sleeps == [3]
 
 
+def test_blocked_proxy_rotates_to_the_next_host(list_page_html: str, blocked_page_html: str):
+    client = Client(
+        delay=0,
+        proxies=("http://proxy-a:8080", "http://proxy-b:8080"),
+        sleeper=lambda _seconds: None,
+    )
+    script = [blocked_page_html, list_page_html]
+    used: list[str | None] = []
+
+    class FakeResponse:
+        def __init__(self, text: str):
+            self.text = text
+
+        def raise_for_status(self) -> None:
+            return None
+
+    class FakeHttp:
+        def __init__(self, proxy: str | None):
+            self.proxy = proxy
+
+        def get(self, url: str) -> FakeResponse:
+            used.append(self.proxy)
+            return FakeResponse(script.pop(0))
+
+        def close(self) -> None:
+            return None
+
+    def open_fake() -> None:
+        client._http = FakeHttp(client._current_proxy())
+
+    client._http.close()
+    client._open = open_fake
+    open_fake()
+    body = client.get("https://avherald.com/")
+    assert "headline_avherald" in body
+    assert used == ["http://proxy-a:8080", "http://proxy-b:8080"]
+    client.close()
+
+
 def test_get_raises_blocked_error(blocked_page_html: str):
     def handler(request: httpx.Request) -> httpx.Response:
         return httpx.Response(200, text=blocked_page_html)

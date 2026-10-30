@@ -171,11 +171,13 @@ Settings live in config.ini. CLI flags win.
         help=f"seconds between page requests (config.ini, else {DEFAULT_REQUEST_DELAY_SECONDS})",
     )
 
-    # Wins over the proxy line in config.ini, because CLI is applied last.
+    # Repeat the flag, or pass a comma-separated list. CLI replaces the ini list.
     where.add_argument(
         "--proxy",
+        action="append",
         default=None,
-        help="HTTP(S) proxy URL (config.ini, else unset)",
+        metavar="URL",
+        help="HTTP(S) proxy URL; repeat or comma-separate (config.ini, else direct)",
     )
 
     # Passed through to httpx.
@@ -361,8 +363,8 @@ def _format_show_config(config: RunConfig, ini_path: Path | None) -> str:
     # None means there is no page cap.
     pages = str(config.max_pages) if config.max_pages is not None else "none"
 
-    # Do not print the proxy URL. Say only whether one is configured.
-    proxy = "set" if config.proxy else "unset"
+    # Count only. The URL can carry credentials.
+    proxy = str(len(config.proxies)) if config.proxies else "direct"
 
     # One fact per line, stable order.
     lines = [

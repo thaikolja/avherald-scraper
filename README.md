@@ -64,7 +64,7 @@ Sources apply in this order: command-line flags, [`config.ini`](config.ini), bui
 | `--sort` | `update` | `update` or `occurrence` |
 | `-o`, `--db` | `data/avherald.sqlite` | SQLite file |
 | `-d`, `--delay` | `3` | Seconds between list-page requests |
-| `--proxy` | unset | HTTP(S) proxy URL |
+| `--proxy` | direct | HTTP(S) proxy URL; repeat or comma-separate. A ban tries the next host |
 | `--timeout` | `20` | Request timeout in seconds |
 | `--user-agent` | tool identifier | Value sent in the `User-Agent` header |
 | `--dry-run` | off | Parse and print rows, and leave the database unchanged |
@@ -93,7 +93,7 @@ Sources apply in this order: command-line flags, [`config.ini`](config.ini), bui
 | `verbose` | `crawl` | `-v`, `--verbose` |
 | `delay` | `network` | `-d`, `--delay` |
 | `timeout` | `network` | `--timeout` |
-| `proxy` | `network` | `--proxy` |
+| `proxy` | `network` | `--proxy` (comma-separated list; failover in order) |
 
 Pass `--config path/to/config.ini` to use a different file for that run.
 

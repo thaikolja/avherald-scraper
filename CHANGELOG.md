@@ -34,7 +34,8 @@ Complete rewrite of the 1.x script as a `src/` package. Listing headlines are st
 * config(ini): read default settings from `config.ini` in the project root, and let CLI flags override that file
 * config(remove): drop `.env` and environment variables; settings live only in `config.ini`
 * db(upsert): write a batch with one `INSERT ... ON CONFLICT` and open SQLite in WAL mode
-* cli(progress): show a live progress bar on a terminal while list pages download
+* cli(progress): keep the progress bar on screen for the whole crawl, including the wait for each page
+* http(proxy): accept several proxies and rotate to the next host after a ban or a failed request
 * cli(output): replace the paragraph summary with the counts that changed
 * cli(help): point flag defaults at `config.ini`, with the built-in value as the fallback
 * cli(show): add `--show-config` to print the effective settings and exit without a crawl

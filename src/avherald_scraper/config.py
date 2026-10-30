@@ -99,8 +99,8 @@ class RunConfig:
     # None means "no page cap", only the article limit.
     max_pages: int | None = None
 
-    # HTTP(S) proxy URL from config.ini or --proxy. Nothing is read from the environment.
-    proxy: str | None = None
+    # HTTP(S) proxies, in try order. Empty means a direct connection.
+    proxies: tuple[str, ...] = ()
 
     # Per-request timeout in seconds.
     timeout: float = DEFAULT_TIMEOUT_SECONDS
@@ -194,6 +194,52 @@ def parse_categories(value: str | list[str] | tuple[str, ...] | None) -> tuple[s
     # Walk the pieces once.
     for part in parts:
         # Drop blanks and names we already kept.
+        if not part or part in seen:
+            # The next piece might still be new.
+            continue
+
+        # Remember it so a repeat doesn't get a second slot.
+        seen.add(part)
+
+        # Preserve the order the user wrote.
+        ordered.append(part)
+
+    # Tuples suit a frozen config.
+    return tuple(ordered)
+
+
+def parse_proxies(value: str | list[str] | tuple[str, ...] | None) -> tuple[str, ...]:
+    """Normalize one proxy string, or several, into a unique tuple.
+
+    A string may contain commas. A list may contain commas inside its items.
+    Blank pieces are dropped. Order is the order they should be tried.
+    """
+
+    # None and "" both mean a direct connection.
+    if not value:
+        # Empty tuple is what RunConfig stores for "no proxy".
+        return ()
+
+    # A single string is treated like a one-item list from here on.
+    raw = [value] if isinstance(value, str) else list(value)
+
+    # Pieces after splitting commas.
+    parts: list[str] = []
+
+    # `--proxy a --proxy b,c` both land here.
+    for item in raw:
+        # Split and trim each piece.
+        parts.extend(piece.strip() for piece in str(item).split(","))
+
+    # First-seen order, so failover is stable.
+    seen: set[str] = set()
+
+    # The result, without duplicates.
+    ordered: list[str] = []
+
+    # Walk the pieces once.
+    for part in parts:
+        # Drop blanks and hosts we already kept.
         if not part or part in seen:
             # The next piece might still be new.
             continue
@@ -357,6 +403,11 @@ def _apply(config: RunConfig, updates: Mapping[str, Any]) -> RunConfig:
 
     # Walk whatever this layer provided.
     for key, value in updates.items():
+        # The ini file and the flag both say `proxy`. The field is `proxies`.
+        if key == "proxy":
+            # One name from here on.
+            key = "proxies"
+
         # None means "this layer didn't set it".
         if key not in allowed or value is None:
             # Skip, and leave the lower layer's value in place.
@@ -364,6 +415,11 @@ def _apply(config: RunConfig, updates: Mapping[str, Any]) -> RunConfig:
 
         # Keep it for the conversion step below.
         cleaned[key] = value
+
+    # Proxies arrive as a string, a list, or a tuple depending on the source.
+    if "proxies" in cleaned:
+        # Commas are split and blanks are dropped.
+        cleaned["proxies"] = parse_proxies(cleaned["proxies"])
 
     # Categories arrive as a string, a list, or a tuple depending on the source.
     if "categories" in cleaned:

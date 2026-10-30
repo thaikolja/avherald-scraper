@@ -27,6 +27,9 @@ from __future__ import annotations
 # Progress goes to stderr so the summary on stdout stays pipe-friendly.
 import sys
 
+# The bar keeps redrawing while a page request is blocked.
+import threading
+
 # Used only to tally categories for the CLI summary.
 from collections import Counter
 
@@ -161,7 +164,7 @@ def run(config: RunConfig, *, client: HtmlFetcher | None = None) -> ScrapeResult
         fetcher = Client(
             delay=config.delay,
             timeout=config.timeout,
-            proxy=config.proxy,
+            proxies=config.proxies,
             user_agent=config.user_agent,
         )
 
@@ -291,7 +294,7 @@ def _bar_glyphs() -> tuple[str, str]:
 
 
 class _Progress:
-    """One in-place bar on stderr. Silent when quiet or not a terminal."""
+    """A bar that stays on screen for the whole crawl, including the wait."""
 
     def __init__(self, config: RunConfig):
         """Remember the run settings and that nothing has been drawn yet."""
@@ -299,53 +302,130 @@ class _Progress:
         # Quiet and the article limit live here.
         self._config = config
 
-        # True after the first paint, so close() knows a newline is owed.
+        # Latest counts. The spinner thread reads these.
+        self._kept = 0
+
+        # Same, for ids already stored.
+        self._skipped = 0
+
+        # Which spinner glyph to show while a request is in flight.
+        self._tick = 0
+
+        # True after the first visible line, so the next paint rewrites it.
         self._drawn = False
 
-        # Previous line length, so a shorter update erases the tail.
-        self._width = 0
+        # Stops the spinner thread.
+        self._stop = threading.Event()
 
-    def update(self, *, kept: int, skipped: int) -> None:
-        """Redraw the bar for the latest kept and skipped counts."""
+        # Keeps the spinner and the main thread from writing the same line.
+        self._lock = threading.Lock()
+
+        # None until start() on a real terminal.
+        self._thread: threading.Thread | None = None
+
+    def start(self) -> None:
+        """Paint 0/limit immediately, then keep the line alive during fetches."""
+
+        # The empty bar has to exist before the first request blocks.
+        self.update(kept=0, skipped=0)
+
+        # Pipes and `--quiet` do not get a background redraw.
+        if not self._live():
+            # The summary is enough there.
+            return
+
+        # Daemon so a crash cannot leave the process hanging on the spinner.
+        self._thread = threading.Thread(target=self._spin, name="avherald-progress", daemon=True)
+
+        # Redraws while get() is blocked on the network or the delay.
+        self._thread.start()
+
+    def _live(self) -> bool:
+        """True when a live bar should take the terminal."""
 
         # `--quiet` owns silence.
         if self._config.quiet:
-            # Leave the terminal alone.
+            # No bar, no spinner.
+            return False
+
+        # A captured stderr would only show the line after the crawl ends.
+        return bool(getattr(sys.stderr, "isatty", lambda: False)())
+
+    def _spin(self) -> None:
+        """Redraw about seven times a second until the crawl stops."""
+
+        # wait() returns True when close() sets the event.
+        while not self._stop.wait(0.15):
+            # Next glyph, so a stalled count still looks alive.
+            self._tick += 1
+
+            # Same numbers, new spinner.
+            self._paint()
+
+    def update(self, *, kept: int, skipped: int) -> None:
+        """Store the latest counts and redraw if this is a terminal."""
+
+        # The spinner thread will pick these up on its next tick too.
+        self._kept = kept
+
+        # Stored ids that did not count toward the limit.
+        self._skipped = skipped
+
+        # Paint now so a finished page does not wait for the next tick.
+        self._paint()
+
+    def _paint(self) -> None:
+        """Write one bar line. Later paints replace that same line."""
+
+        # Quiet runs never touch stderr.
+        if self._config.quiet or not self._live():
+            # Tests and pipes stay clean.
             return
 
-        # Pipes and test capture get the final summary only.
-        if not sys.stderr.isatty():
-            # A bar of carriage returns would corrupt a log.
-            return
+        # The track plus kept/limit.
+        line = render_progress(
+            kept=self._kept,
+            limit=self._config.limit,
+            skipped=self._skipped,
+        )
 
-        # The visible track.
-        line = render_progress(kept=kept, limit=self._config.limit, skipped=skipped)
+        # A moving mark while the fill itself has not changed.
+        mark = "|/-\\"[self._tick % 4]
 
-        # Spaces clear whatever the previous paint left past this line.
-        pad = " " * max(0, self._width - len(line))
+        # One visible row.
+        text = f"{mark} {line}"
 
-        # Stay on the same row.
-        print(f"\r{line}{pad}", end="", file=sys.stderr, flush=True)
+        # The spinner and update() can fire together.
+        with self._lock:
+            # First line must end in a newline or some consoles hide it until the end.
+            if self._drawn:
+                # Up one row, clear it, draw again with a newline so the console flushes.
+                sys.stderr.write(f"\x1b[1A\x1b[2K{text}\n")
 
-        # Remember that close() must finish the row.
-        self._drawn = True
+            # Nothing is on screen yet.
+            else:
+                # A real newline is what makes the bar show up before the crawl finishes.
+                sys.stderr.write(f"{text}\n")
 
-        # The next paint may be shorter.
-        self._width = len(line)
+                # Later paints rewrite this row instead of stacking.
+                self._drawn = True
+
+            # Do not wait for the process to exit.
+            sys.stderr.flush()
 
     def close(self) -> None:
-        """Move off the bar line once the crawl stops."""
+        """Stop the spinner and leave the last bar line where it is."""
 
-        # Nothing was painted.
-        if not self._drawn:
-            # No blank line before the summary.
-            return
+        # The loop exits on the next wait.
+        self._stop.set()
 
-        # The summary starts underneath the finished bar.
-        print(file=sys.stderr)
+        # No thread when this was quiet or not a terminal.
+        if self._thread is not None:
+            # Bound the wait so a stuck redraw cannot hold the process.
+            self._thread.join(timeout=1)
 
-        # A second close, from a nested finally, stays quiet.
-        self._drawn = False
+            # close() can run twice from the finally block.
+            self._thread = None
 
 
 # Walk pages until the limit, the page cap, or the end of the list.
@@ -393,6 +473,9 @@ def _crawl(
 
     # Flipped when there is no next page, or when an incremental run is caught up.
     completed = False
+
+    # Empty bar first, so the wait for the first page is visible.
+    progress.start()
 
     # Stop at the limit even if more pages exist.
     while url and len(collected) < config.limit:
@@ -448,6 +531,9 @@ def _crawl(
 
             # This one counts toward the limit.
             collected.append(row)
+
+            # Fill the bar as rows are accepted, not only after the page ends.
+            progress.update(kept=len(collected), skipped=skipped)
 
             # The bookmark records the last id we actually kept.
             last_article_id = row.article_id

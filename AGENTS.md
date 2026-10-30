@@ -76,7 +76,7 @@ Python floor is `>=3.11`. Runtime libraries are `beautifulsoup4`, `lxml`, and `h
 | Sort | `--sort` | `sort` |
 | Database | `-o`, `--db` | `database` |
 | Delay | `-d`, `--delay` | `delay` |
-| Proxy | `--proxy` | `proxy` |
+| Proxy | `--proxy` (repeatable) | `proxy` (comma-separated; rotate on ban or HTTP failure) |
 | Timeout | `--timeout` | `timeout` |
 | Resume | `--resume` / `--no-resume` | `resume` |
 | Fresh start | `--fresh` | `fresh` |

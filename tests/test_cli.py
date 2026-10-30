@@ -57,7 +57,7 @@ def test_show_config_exits_without_writing_database(tmp_path, capsys):
     out = capsys.readouterr().out
     assert "limit: 9" in out
     assert "sort: occurrence" in out
-    assert "proxy: unset" in out
+    assert "proxy: direct" in out
     assert str(ini) in out
     assert list(tmp_path.glob("*.sqlite")) == []
 

@@ -13,6 +13,16 @@ def test_parse_categories_accepts_csv_and_repeats():
     )
 
 
+def test_parse_proxies_keeps_order_and_splits_commas():
+    from avherald_scraper.config import parse_proxies
+
+    assert parse_proxies("http://a:1, http://b:2") == ("http://a:1", "http://b:2")
+    assert parse_proxies(["http://a:1", "http://b:2,http://a:1"]) == (
+        "http://a:1",
+        "http://b:2",
+    )
+
+
 def test_parse_categories_rejects_unknown():
     with pytest.raises(ValueError, match="unknown category"):
         parse_categories(["banana"])
@@ -85,7 +95,7 @@ def test_shipped_config_ini_matches_documented_defaults():
     assert config.verbose is False
     assert config.delay == 3.0
     assert config.timeout == 20.0
-    assert config.proxy is None
+    assert config.proxies == ()
 
     overridden = load_config(cli={"limit": 7, "sort": "occurrence"}, cwd=root)
     assert overridden.limit == 7
