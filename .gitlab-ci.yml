@@ -28,7 +28,7 @@ pages:
   script:
     - cd docs
     - npm ci
-    - NUXT_APP_BASE_URL=/avherald-scraper/ NUXT_PUBLIC_SITE_URL=https://thaikolja.gitlab.io npm run generate
+    - NUXT_APP_BASE_URL=/ NUXT_PUBLIC_SITE_URL=https://avherald-scraper-af5e68.gitlab.io npm run generate
     - mkdir -p ../public
     - cp -a .output/public/. ../public/
   artifacts:
