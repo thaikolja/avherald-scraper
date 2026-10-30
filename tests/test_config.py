@@ -2,7 +2,7 @@ from pathlib import Path
 
 import pytest
 
-from avherald_scraper.config import RunConfig, load_config, parse_categories
+from avherald_scraper.config import load_config, parse_categories
 
 
 def test_parse_categories_accepts_csv_and_repeats():
@@ -18,21 +18,23 @@ def test_parse_categories_rejects_unknown():
         parse_categories(["banana"])
 
 
-def test_load_config_cli_overrides_toml(tmp_path: Path, monkeypatch):
-    monkeypatch.chdir(tmp_path)
-    (tmp_path / "avherald.toml").write_text(
+def test_load_config_cli_overrides_ini(tmp_path: Path):
+    (tmp_path / "config.ini").write_text(
         """
+[crawl]
 limit = 10
-delay = 9
-sort = "occurrence"
-categories = ["crash"]
+sort = occurrence
+categories = crash
 verbose = true
+
+[network]
+delay = 9
 """,
         encoding="utf-8",
     )
     config = load_config(
         cli={"limit": 50, "delay": None, "categories": ["incident"]},
-        environ={},
+        cwd=tmp_path,
     )
     assert config.limit == 50
     assert config.delay == 9
@@ -42,15 +44,65 @@ verbose = true
     assert config.resolved_start_url() == "https://avherald.com/h?list=&opt=1025"
 
 
-def test_env_resume_and_fresh(tmp_path: Path, monkeypatch):
-    monkeypatch.chdir(tmp_path)
-    config = load_config(
-        environ={
-            "AVHERALD_RESUME": "false",
-            "AVHERALD_FRESH": "true",
-            "AVHERALD_LIMIT": "25",
-        }
+def test_config_ini_values_and_cli_override(tmp_path: Path):
+    (tmp_path / "config.ini").write_text(
+        """
+[crawl]
+limit = 10
+sort = occurrence
+resume = false
+
+[network]
+delay = 9
+""",
+        encoding="utf-8",
     )
+    from_file = load_config(cwd=tmp_path)
+    assert from_file.limit == 10
+    assert from_file.sort == "occurrence"
+    assert from_file.resume is False
+    assert from_file.delay == 9.0
+
+    from_cli = load_config(cli={"limit": 3, "sort": "update"}, cwd=tmp_path)
+    assert from_cli.limit == 3
+    assert from_cli.sort == "update"
+    assert from_cli.delay == 9.0
+    assert from_cli.resume is False
+
+
+def test_shipped_config_ini_matches_documented_defaults():
+    root = Path(__file__).resolve().parents[1]
+    config = load_config(cwd=root)
+    assert config.base_url == "https://avherald.com"
+    assert config.database_path == Path("./data/avherald.sqlite")
+    assert config.limit == 10
+    assert config.sort == "update"
+    assert config.categories == ()
+    assert config.max_pages is None
+    assert config.resume is True
+    assert config.fresh is False
+    assert config.dry_run is False
+    assert config.verbose is False
+    assert config.delay == 3.0
+    assert config.timeout == 20.0
+    assert config.proxy is None
+
+    overridden = load_config(cli={"limit": 7, "sort": "occurrence"}, cwd=root)
+    assert overridden.limit == 7
+    assert overridden.sort == "occurrence"
+
+
+def test_ini_resume_and_fresh(tmp_path: Path):
+    (tmp_path / "config.ini").write_text(
+        """
+[crawl]
+resume = false
+fresh = true
+limit = 25
+""",
+        encoding="utf-8",
+    )
+    config = load_config(cwd=tmp_path)
     assert config.resume is False
     assert config.fresh is True
     assert config.limit == 25

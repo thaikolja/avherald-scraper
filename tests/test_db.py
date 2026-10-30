@@ -5,16 +5,16 @@ from avherald_scraper.models import ArticleRecord
 
 
 def _record(**overrides) -> ArticleRecord:
-    data = dict(
-        article_id="53f3f5aa",
-        url="https://avherald.com/h?article=53f3f5aa",
-        heading="ANZ B789 at Auckland on Apr 25th 2026, brakes fault on line up",
-        list_date="Sunday Aug 30th 2026",
-        list_date_iso="2026-08-30",
-        icon="incident.gif",
-        category="incident",
-        source_page="https://avherald.com/",
-    )
+    data = {
+        "article_id": "53f3f5aa",
+        "url": "https://avherald.com/h?article=53f3f5aa",
+        "heading": "ANZ B789 at Auckland on Apr 25th 2026, brakes fault on line up",
+        "list_date": "Sunday Aug 30th 2026",
+        "list_date_iso": "2026-08-30",
+        "icon": "incident.gif",
+        "category": "incident",
+        "source_page": "https://avherald.com/",
+    }
     data.update(overrides)
     return ArticleRecord(**data)
 

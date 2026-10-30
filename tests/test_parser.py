@@ -7,7 +7,7 @@ def test_is_blocked_detects_ip_ban_page(blocked_page_html: str, list_page_html: 
 
 
 def test_parse_list_page_extracts_listing_rows_not_footer(list_page_html: str):
-    records, next_url = parse_list_page(
+    records, _next_url = parse_list_page(
         list_page_html,
         source_page="https://avherald.com/",
     )

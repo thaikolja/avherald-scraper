@@ -1,45 +1,70 @@
 # Changelog
 
-## v2.2.0
+All notable changes to this project are documented in this file.
 
-- **No duplicates:** `article_id` is unique. Already-stored ids are skipped and do not count toward `--limit`.
-- **Resume:** each run saves the list-page position in `crawl_state`. The next run continues from there instead of restarting at the homepage. `--fresh` (or `AVHERALD_FRESH=true`) starts over.
-- **`.env.example`:** documents every setting (`AVHERALD_LIMIT`, sort, categories, resume, proxy, …).
+The format follows [Conventional Commits](https://www.conventionalcommits.org/en/v1.0.0/).
+Versions follow [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
-## v2.1.0
+## [2.0.0] - Unreleased
 
-Easier default run, more knobs when you need them.
+Complete rewrite of the 1.x script as a `src/` package. Listing headlines are stored by article id.
 
-- **Defaults:** `avherald-scraper` with no flags still stores 50 headlines. Short flags: `-n`, `-c`, `-o`, `-d`, `-p`, `-v`, `-q`.
-- **PyCharm:** edit the `OPTIONS` list in `main.py` and press Run.
-- **Config file:** optional `avherald.toml` (see `avherald.toml.example`). CLI > env > toml > defaults.
-- **Filters:** `--category incident` (repeatable or CSV), `--sort update|occurrence` (maps to the site `opt=` bitfield).
-- **Caps:** `--pages N` in addition to `--limit`. `--dry-run` prints rows without writing SQLite.
-- **Network:** `--proxy`, `--timeout`, `--user-agent`.
+### Breaking Changes
 
-## v2.0.0
+* cli: provide `avherald-scraper` as the supported command [#447cdd5](https://github.com/thaikolja/avherald-scraper/commit/447cdd5ae3f3f1f447cc8ec64d783f18395fd6e6)
+* packaging: declare dependencies in `pyproject.toml` and install with pip [#447cdd5](https://github.com/thaikolja/avherald-scraper/commit/447cdd5ae3f3f1f447cc8ec64d783f18395fd6e6)
+* db(replace): replace the `incidents` table with `articles`, keyed by `article_id` [#447cdd5](https://github.com/thaikolja/avherald-scraper/commit/447cdd5ae3f3f1f447cc8ec64d783f18395fd6e6)
+* db: write the default database to `data/avherald.sqlite` [#447cdd5](https://github.com/thaikolja/avherald-scraper/commit/447cdd5ae3f3f1f447cc8ec64d783f18395fd6e6)
+* records: store the canonical article URL, heading, list date, and category icon [#447cdd5](https://github.com/thaikolja/avherald-scraper/commit/447cdd5ae3f3f1f447cc8ec64d783f18395fd6e6)
+* filter: keep every category unless one is requested, including `news` [#447cdd5](https://github.com/thaikolja/avherald-scraper/commit/447cdd5ae3f3f1f447cc8ec64d783f18395fd6e6)
+* http: send a tool User-Agent on listing requests [#447cdd5](https://github.com/thaikolja/avherald-scraper/commit/447cdd5ae3f3f1f447cc8ec64d783f18395fd6e6)
 
-Rebuild as a small package that crawls list pages, not article bodies.
+### Features
 
-- **URL grammar:** Article links match `/h?article=<8-hex>` and are stored without `opt=`. Pagination follows the Next control; IDs are not guessed.
-- **Records:** Each row is `article_id`, canonical URL, heading, list date, icon/category.
-- **SQLite:** Upsert on `article_id` in `data/avherald.sqlite`. Re-crawls update heading/date/icon and keep `first_seen_at`.
-- **Layout:** `src/avherald_scraper/` modules for URLs, HTTP, parser, database, scrape loop, and CLI.
-- **Politeness:** Delay between list-page requests, identifiable User-Agent, IP-block detection, optional `HTTPS_PROXY`.
-- **CLI:** `python -m avherald_scraper --limit 50`
+* urls: accept `/h?article=<8-hex>` links and drop the list-view `opt` parameter [#447cdd5](https://github.com/thaikolja/avherald-scraper/commit/447cdd5ae3f3f1f447cc8ec64d783f18395fd6e6)
+* urls(build): build the first list URL from `--sort` and `--category` [#447cdd5](https://github.com/thaikolja/avherald-scraper/commit/447cdd5ae3f3f1f447cc8ec64d783f18395fd6e6)
+* parser: follow the Next control and ignore footer and interview links [#447cdd5](https://github.com/thaikolja/avherald-scraper/commit/447cdd5ae3f3f1f447cc8ec64d783f18395fd6e6)
+* db(upsert): upsert on `article_id` and preserve `first_seen_at` [#447cdd5](https://github.com/thaikolja/avherald-scraper/commit/447cdd5ae3f3f1f447cc8ec64d783f18395fd6e6)
+* db(save): save the list-page position in `crawl_state` [#447cdd5](https://github.com/thaikolja/avherald-scraper/commit/447cdd5ae3f3f1f447cc8ec64d783f18395fd6e6)
+* scraper(skip): skip stored ids so they do not count toward `--limit` [#447cdd5](https://github.com/thaikolja/avherald-scraper/commit/447cdd5ae3f3f1f447cc8ec64d783f18395fd6e6)
+* cli(resume): resume from the saved list page, and add `--fresh` to start again [#447cdd5](https://github.com/thaikolja/avherald-scraper/commit/447cdd5ae3f3f1f447cc8ec64d783f18395fd6e6)
+* cli: add `--limit`, `--pages`, `--category`, `--sort`, `--db`, and `--delay` [#447cdd5](https://github.com/thaikolja/avherald-scraper/commit/447cdd5ae3f3f1f447cc8ec64d783f18395fd6e6)
+* cli: add `--dry-run`, `--proxy`, `--timeout`, `--user-agent`, `--verbose`, and `--quiet` [#447cdd5](https://github.com/thaikolja/avherald-scraper/commit/447cdd5ae3f3f1f447cc8ec64d783f18395fd6e6)
+* config(load): load `avherald.toml` and `.env`, with CLI overriding environment, file, and defaults [#447cdd5](https://github.com/thaikolja/avherald-scraper/commit/447cdd5ae3f3f1f447cc8ec64d783f18395fd6e6)
+* config(ini): read default settings from `config.ini` in the project root, and let CLI flags override that file
+* config(remove): drop `.env` and environment variables; settings live only in `config.ini`
+* http(delay): wait between list-page requests and stop when the IP-block page is returned [#447cdd5](https://github.com/thaikolja/avherald-scraper/commit/447cdd5ae3f3f1f447cc8ec64d783f18395fd6e6)
 
-## v1.0.2
+### Continuous Integration
 
-This release introduces configurable settings via environment variables and includes infrastructure improvements.
+* ci: install the project with `pip install -e ".[dev]"` before `pytest` [#447cdd5](https://github.com/thaikolja/avherald-scraper/commit/447cdd5ae3f3f1f447cc8ec64d783f18395fd6e6)
 
-Key updates:
+## [1.0.2] - 2025-05-12
 
-- **Configuration:** Application settings (like base URL and database path) are now managed using environment variables loaded from a `.env` file.
-- **Proxy Support:** Changed the request URL handling, likely to support proxying requests (as noted in the changelog).
-- **Dependency Management:** Added linting tools (flake8) and updated dependencies in `requirements.txt`.
-- **Build Process:** Updated GitLab CI configuration to ensure all dependencies are installed.
-- **Project Structure:** Added `CHANGELOG.md` and refined `.gitignore` and output directory handling.
+### Features
 
-## v1.0.1
+* config(load): load `BASE_URL` and `DATABASE_FILE_PATH` from a `.env` file [#3286e11](https://github.com/thaikolja/avherald-scraper/commit/3286e1144237abce882d165ba3e82f4b8e8b81cb)
 
-* Changed the location of the output to `/output/data.sqlite`
+### Build System
+
+* build(deps): track install dependencies in `requirements.txt` [#3286e11](https://github.com/thaikolja/avherald-scraper/commit/3286e1144237abce882d165ba3e82f4b8e8b81cb)
+* lint: add flake8 [#3286e11](https://github.com/thaikolja/avherald-scraper/commit/3286e1144237abce882d165ba3e82f4b8e8b81cb)
+
+### Continuous Integration
+
+* ci: install dependencies before the test job [#ab113cb](https://github.com/thaikolja/avherald-scraper/commit/ab113cb1244c15e526fb2ba212696044c67c6423)
+
+### Miscellaneous Chores
+
+* repo: add `CHANGELOG.md` [#7a5be91](https://github.com/thaikolja/avherald-scraper/commit/7a5be91c225cb0e9b47c4fe4883d6df892b2fa6d)
+* repo: keep `output/` in the tree and ignore generated files there [#fac12df](https://github.com/thaikolja/avherald-scraper/commit/fac12df2c8ffb71893a5e2c13f994fd2b074b40a)
+
+## [1.0.1] - 2025-05-11
+
+### Features
+
+* scraper(skip): skip listings in the `news` category [#6edbea6](https://github.com/thaikolja/avherald-scraper/commit/6edbea63629ec097a4c2bb71fb245151ae47ec41)
+
+[2.0.0]: https://github.com/thaikolja/avherald-scraper/compare/v1.0.2...HEAD
+[1.0.2]: https://github.com/thaikolja/avherald-scraper/compare/v1.0.1...v1.0.2
+[1.0.1]: https://github.com/thaikolja/avherald-scraper/compare/v1.0.0...v1.0.1

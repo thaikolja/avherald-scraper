@@ -1,4 +1,8 @@
-from avherald_scraper.urls import canonical_article_url, list_page_url, parse_article_href
+from avherald_scraper.urls import (
+    canonical_article_url,
+    list_page_url,
+    parse_article_href,
+)
 
 
 def test_parses_absolute_article_url_and_drops_opt():

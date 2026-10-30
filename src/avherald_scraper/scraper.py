@@ -1,92 +1,229 @@
+"""Walk listing pages until the limit, the page cap, or the end of the list.
+
+Stored ids are skipped and do not count toward the limit. The bookmark in
+`crawl_state` is what makes the next run continue instead of starting over.
+"""
+
+#  @name:           The Aviation Herald (avherald)
+#  @description     Unofficial CLI tool to scrape data from avherald.com and store it in a .sqlite database.
+#  @author          Kolja Nolte <kolja.nolte@gmail.com>
+#  @copyright       2025-2026 (C) Kolja Nolte
+#  @see             https://docs.kolja-nolte.com/av-herald
+#
+#  This program is free software; you can redistribute it and/or modify
+#  it under the terms of the GNU General Public License as published by
+#  the Free Software Foundation; either version 2 of the License, or
+#  (at your option) any later version.
+#
+#  Released under the GNU General Public License v2 or later.
+#  See: https://www.gnu.org/licenses/gpl-2.0.html
+#
+#  @package AVH
+#  @license GPL-2.0-or-later
+
+# Annotations can mention classes defined further down.
 from __future__ import annotations
 
+# Used only to tally categories for the CLI summary.
 from collections import Counter
+
+# ScrapeResult is frozen. _Crawl is the mutable scratchpad while we walk.
 from dataclasses import dataclass
+
+# The database path may be a string from config.ini.
 from pathlib import Path
+
+# HtmlFetcher is a small protocol so tests can pass a fake downloader.
 from typing import Protocol
 
+# Every knob for one run, already merged from the CLI and config.ini.
 from avherald_scraper.config import RunConfig
+
+# Opened unless this is a dry run against a database that doesn't exist yet.
 from avherald_scraper.db import Database
+
+# The real downloader. Tests inject their own and never construct this.
 from avherald_scraper.http import Client
+
+# What the parser returns, and what we eventually store.
 from avherald_scraper.models import ArticleRecord
+
+# One listing page in, rows and a next URL out.
 from avherald_scraper.parser import parse_list_page
 
 
+# The crawl only needs something that can download a page.
 class HtmlFetcher(Protocol):
-    def get(self, url: str) -> str: ...
+    """Anything with a `get` method that returns HTML."""
+
+    # Download one page. The real client and the tests both do this.
+    def get(self, url: str) -> str:
+        """Download one page and return its HTML."""
+
+        # The real client and the test double both satisfy this.
+        ...
 
 
+# Frozen so the CLI can print the result without worrying it will change.
 @dataclass(frozen=True)
 class ScrapeResult:
+    """What one run saw, and what it did to the database."""
+
+    # List pages actually downloaded.
     pages_fetched: int
+
+    # Rows the parser returned, before skip and category filters.
     parsed: int
+
+    # Brand-new article ids written this run.
     inserted: int
+
+    # Ids that were already stored and got a refresh.
     updated: int
+
+    # How many rows the database holds after the run.
     stored: int
+
+    # Ids we already had, so they did not count toward the limit.
     skipped_duplicate: int
+
+    # Rows dropped because their category was not requested.
     filtered: int = 0
+
+    # The rows this run kept, in listing order.
     records: tuple[ArticleRecord, ...] = ()
+
+    # The bookmark URL we started from, when this run resumed.
     resumed_from: str | None = None
 
+    # Tally the kept rows by category for the summary line.
     def category_counts(self) -> dict[str, int]:
+        """Count the kept rows by category name."""
+
+        # Missing categories are lumped under "unknown" so the summary still adds up.
         counts: Counter[str] = Counter(
             record.category or "unknown" for record in self.records
         )
+
+        # A plain dict is easier for the CLI to sort.
         return dict(counts)
 
 
+# Mutable on purpose. The walk fills it in as pages come back.
 @dataclass
 class _Crawl:
+    """Scratch state for one page walk, before it becomes a ScrapeResult."""
+
+    # Rows that passed the filters and were not already stored.
     records: list[ArticleRecord]
+
+    # Pages downloaded during this walk.
     pages_fetched: int
+
+    # Parser rows seen, including ones we later skipped.
     parsed: int
+
+    # Already-stored ids encountered.
     skipped: int
+
+    # Rows rejected by the category filter.
     filtered: int
+
+    # Where the next run should start. None means "no next page".
     resume_url: str | None
+
+    # Last id we actually kept. Stored on the bookmark.
     last_article_id: str | None
+
+    # True when we believe this filter combo has been fully walked.
     completed: bool
+
+    # Set when we opened a saved URL instead of the first list page.
     resumed_from: str | None
 
 
+# Download listing pages and, unless this is a dry run, write them to SQLite.
 def run(config: RunConfig, *, client: HtmlFetcher | None = None) -> ScrapeResult:
+    """Crawl listing pages and, unless this is a dry run, write SQLite."""
+
+    # True when we created the HTTP client and therefore must close it.
     owned_client = False
+
+    # A test can pass its own fetcher. The command line never does.
     fetcher = client
+
+    # No fake client means we talk to the network ourselves.
     if fetcher is None:
+        # Delay, proxy, and User-Agent all come from the merged config.
         fetcher = Client(
             delay=config.delay,
             timeout=config.timeout,
             proxy=config.proxy,
             user_agent=config.user_agent,
         )
+
+        # Remember to close it in the finally block.
         owned_client = True
 
+    # Stays None when a dry run has no database file to read.
     db: Database | None = None
+
+    # Accept either a Path or a string from config.ini.
     path = Path(config.database_path)
+
+    # A dry run still opens an existing file so it can skip stored ids.
     if not config.dry_run or path.exists():
+        # This creates the parent directory.
         db = Database(path)
+
+        # New files get the articles and crawl_state tables.
         db.init()
+
+        # `--fresh` drops the bookmark, but a dry run must not delete it.
         if config.fresh and not config.dry_run:
+            # Only this sort/category key. Other bookmarks stay.
             db.clear_checkpoint(config.crawl_key())
 
+    # The database and the HTTP client both need closing if we opened them.
     try:
+        # Walk pages until the limit, the page cap, or the end of the list.
         crawl = _crawl(fetcher, config=config, db=db)
+
+        # Dry runs report zeros for the write counters.
         inserted = updated = stored = 0
+
+        # Writing is skipped entirely on a dry run, and when there is no database.
         if not config.dry_run and db is not None:
+            # Inserts and updates share one transaction.
             inserted, updated = db.upsert_many(crawl.records)
+
+            # The next invocation reads this bookmark back.
             db.save_checkpoint(
                 config.crawl_key(),
                 resume_url=crawl.resume_url,
                 last_article_id=crawl.last_article_id,
                 completed=crawl.completed,
             )
+
+            # Includes rows from older runs, not just this one.
             stored = db.count()
+
+    # Close even when the download or the parser raises.
     finally:
+        # A dry run with no existing file never opened a connection.
         if db is not None:
+            # Release the SQLite file before we return.
             db.close()
+
+        # The test double might not have a close method. That's fine.
         close = getattr(fetcher, "close", None)
+
+        # Only close a client we constructed. The caller owns an injected one.
         if owned_client and callable(close):
+            # Shuts the httpx pool.
             close()
 
+    # Freeze the walk into the object the CLI prints.
     result = ScrapeResult(
         pages_fetched=crawl.pages_fetched,
         parsed=crawl.parsed,
@@ -98,87 +235,187 @@ def run(config: RunConfig, *, client: HtmlFetcher | None = None) -> ScrapeResult
         records=tuple(crawl.records),
         resumed_from=crawl.resumed_from,
     )
+
+    # Verbose mode prints a one-line log in addition to the CLI summary.
     if config.verbose:
+        # Prefer the bookmark we resumed from, otherwise the normal start URL.
         where = crawl.resumed_from or config.resolved_start_url()
+
+        # One line, easy to grep.
         print(
             f"start={where} pages={crawl.pages_fetched} parsed={crawl.parsed} "
             f"kept={len(crawl.records)} inserted={inserted} updated={updated} "
             f"skipped_duplicate={crawl.skipped} filtered={crawl.filtered} "
             f"stored={stored}"
         )
+
+    # The CLI formats this for humans.
     return result
 
 
+# Walk pages until the limit, the page cap, or the end of the list.
 def _crawl(
     fetcher: HtmlFetcher,
     *,
     config: RunConfig,
     db: Database | None,
 ) -> _Crawl:
+    """Download list pages and collect rows that still count toward the limit."""
+
+    # Ids already in SQLite. Empty when there is no database.
     known = db.article_ids() if db is not None else set()
+
+    # Grows as we keep rows, so a later page can't add the same id again.
     seen = set(known)
+
+    # Empty means "every category".
     wanted = set(config.categories)
+
+    # The rows this run will keep, in the order we saw them.
     collected: list[ArticleRecord] = []
+
+    # Bumped once per successful download.
     pages_fetched = 0
+
+    # Bumped by however many rows the parser returned.
     parsed = 0
+
+    # Already-stored ids. These do not count toward the limit.
     skipped = 0
+
+    # Wrong category. These don't count either.
     filtered = 0
+
+    # Updated each time we keep a row.
     last_article_id: str | None = None
 
+    # url is where we start. resumed_from is set only when a bookmark was used.
     url, resumed_from, incremental = _start_url(config, db)
+
+    # If we stop in the middle of a page, this is rewritten to stay on it.
     resume_url = url
+
+    # Flipped when there is no next page, or when an incremental run is caught up.
     completed = False
 
+    # Stop at the limit even if more pages exist.
     while url and len(collected) < config.limit:
+        # `--pages` is an extra cap on top of the article limit.
         if config.max_pages is not None and pages_fetched >= config.max_pages:
+            # Leave resume_url pointing at the page we did not fetch.
             break
+
+        # Verbose prints the URL before the request, so a stall is obvious.
         if config.verbose:
+            # stdout, same place as the final summary.
             print(f"Fetching {url}")
+
+        # Raises BlockedError when the site returns the ban page.
         html = fetcher.get(url)
+
+        # Count the page only after it actually came back.
         pages_fetched += 1
+
+        # next_url is None on the last page.
         rows, next_url = parse_list_page(html, source_page=url, base_url=config.base_url)
+
+        # Includes rows we may skip or filter below.
         parsed += len(rows)
+
+        # New ids kept from this page. Used by the incremental stop.
         new_on_page = 0
+
+        # Stored ids seen on this page. Also used by that stop.
         known_on_page = 0
+
+        # Set when the limit is hit before the page is finished.
         stopped_mid = False
 
+        # index is needed so we can look at the rows we haven't consumed yet.
         for index, row in enumerate(rows):
+            # Already stored, or already kept earlier in this run.
             if row.article_id in seen:
+                # Does not count toward `--limit`.
                 skipped += 1
+
+                # The incremental check uses this.
                 known_on_page += 1
+
+                # Move to the next row on this page.
                 continue
+
+            # An empty wanted set means the category filter is off.
             if wanted and row.category not in wanted:
+                # Dropped before it can become a kept row.
                 filtered += 1
+
+                # Still not a duplicate. Just the wrong category.
                 continue
+
+            # Claim the id so a later page can't collect it again.
             seen.add(row.article_id)
+
+            # This one counts toward the limit.
             collected.append(row)
+
+            # The bookmark records the last id we actually kept.
             last_article_id = row.article_id
+
+            # Incremental mode treats a page of only-new rows as "keep going".
             new_on_page += 1
+
+            # The limit can fall in the middle of a page.
             if len(collected) >= config.limit:
+                # Rows after this one on the same page.
                 remaining = rows[index + 1 :]
+
+                # If one of those would also have been kept, stay on this URL.
                 has_more_unknown = any(
                     item.article_id not in seen
                     and (not wanted or item.category in wanted)
                     for item in remaining
                 )
+
+                # Stay put when this page still has work. Otherwise follow Next.
                 resume_url = url if has_more_unknown else next_url
+
+                # No resume URL means we have reached the end.
                 completed = resume_url is None
+
+                # Don't let the code below advance to the next page.
                 stopped_mid = True
+
+                # The limit is filled.
                 break
 
+        # The while-loop also has to stop. `break` above only left the for-loop.
         if stopped_mid:
+            # resume_url was chosen just above.
             break
 
+        # A finished crawl that is run again stops when it hits known ids.
         if incremental and (known_on_page > 0 or new_on_page == 0):
+            # Nothing to resume. The next fresh-looking run starts at the top.
             resume_url = None
+
+            # Mark the bookmark complete so the next run uses incremental mode.
             completed = True
+
+            # Don't keep paging through history we already stored.
             break
 
+        # Follow the Next control. We do not build the offset ourselves.
         url = next_url
+
+        # If we exit because url became None, this is the value we save.
         resume_url = url
+
+        # Last page.
         if url is None:
+            # The bookmark can say this filter is done.
             completed = True
 
+    # The caller writes this, or throws it away on a dry run.
     return _Crawl(
         records=collected,
         pages_fetched=pages_fetched,
@@ -192,17 +429,41 @@ def _crawl(
     )
 
 
+# Choose the opening URL, and whether this run should stop at the first known id.
 def _start_url(
     config: RunConfig, db: Database | None
 ) -> tuple[str, str | None, bool]:
+    """Pick the first URL, and whether this run is just checking for new rows.
+
+    The third value is the incremental flag. It is true only when the previous
+    run for this filter said it had finished the list.
+    """
+
+    # Homepage, or the filtered list URL, unless --start-url was set.
     start = config.resolved_start_url()
+
+    # No database, resume turned off, or --fresh: always the first page.
     if db is None or not config.resume or config.fresh:
+        # Not a resume, and not an incremental catch-up.
         return start, None, False
+
+    # Look up the bookmark for this exact sort and category mix.
     checkpoint = db.get_checkpoint(config.crawl_key())
+
+    # First time we've crawled this combination.
     if checkpoint is None:
+        # Start at the top.
         return start, None, False
+
+    # The previous run reached the end. Start over, but stop at the first known id.
     if checkpoint.completed:
+        # The True is the incremental flag.
         return start, None, True
+
+    # A partial run saved the next page to open.
     if checkpoint.resume_url:
+        # resumed_from is that same URL, so the summary can mention it.
         return checkpoint.resume_url, checkpoint.resume_url, False
+
+    # A bookmark with no URL and not marked complete. Start over quietly.
     return start, None, False
