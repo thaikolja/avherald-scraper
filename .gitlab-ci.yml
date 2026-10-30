@@ -1,9 +1,10 @@
 stages:
   - test
 
-image: python:3.13-slim
+image: python:3.14-slim
 
 before_script:
+  - python -m venv .venv
   - source .venv/bin/activate
   - pip install --upgrade pip
   - pip install -e ".[dev]"
