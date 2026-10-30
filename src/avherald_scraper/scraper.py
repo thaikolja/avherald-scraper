@@ -48,6 +48,9 @@ from avherald_scraper.config import RunConfig
 # Opened unless this is a dry run against a database that doesn't exist yet.
 from avherald_scraper.db import Database
 
+# json, csv, and xlsx copies of the articles table.
+from avherald_scraper.export import export_articles
+
 # The real downloader. Tests inject their own and never construct this.
 from avherald_scraper.http import Client
 
@@ -101,6 +104,9 @@ class ScrapeResult:
 
     # The bookmark URL we started from, when this run resumed.
     resumed_from: str | None = None
+
+    # json, csv, or xlsx path when that copy was written. None for sqlite-only.
+    export_path: Path | None = None
 
     # Tally the kept rows by category for the summary line.
     def category_counts(self) -> dict[str, int]:
@@ -201,6 +207,9 @@ def run(config: RunConfig, *, client: HtmlFetcher | None = None) -> ScrapeResult
         # Dry runs report zeros for the write counters.
         inserted = updated = stored = 0
 
+        # Set when json, csv, or xlsx was written.
+        export_path = None
+
         # Writing is skipped entirely on a dry run, and when there is no database.
         if not config.dry_run and db is not None:
             # Inserts and updates share one transaction.
@@ -216,6 +225,11 @@ def run(config: RunConfig, *, client: HtmlFetcher | None = None) -> ScrapeResult
 
             # Includes rows from older runs, not just this one.
             stored = db.count()
+
+            # sqlite is the store. Other formats are a sibling file.
+            if config.output_format != "sqlite":
+                # Written before the connection closes.
+                export_path = export_articles(db, config.output_format, path)
 
     # Close even when the download or the parser raises.
     finally:
@@ -246,6 +260,7 @@ def run(config: RunConfig, *, client: HtmlFetcher | None = None) -> ScrapeResult
         filtered=crawl.filtered,
         records=tuple(crawl.records),
         resumed_from=crawl.resumed_from,
+        export_path=export_path,
     )
 
     # The CLI formats this for humans.

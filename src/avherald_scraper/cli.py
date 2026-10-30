@@ -49,6 +49,7 @@ from avherald_scraper.config import (
     DEFAULT_LIMIT,
     DEFAULT_REQUEST_DELAY_SECONDS,
     DEFAULT_TIMEOUT_SECONDS,
+    OUTPUT_FORMATS,
     RunConfig,
     load_config,
     parse_categories,
@@ -160,6 +161,15 @@ Settings live in config.ini. CLI flags win.
         default=None,
         dest="database_path",
         help=f"SQLite file (config.ini, else {DEFAULT_DATABASE_PATH})",
+    )
+
+    # json, csv, and xlsx are written next to this file. sqlite is the file itself.
+    where.add_argument(
+        "--format",
+        choices=OUTPUT_FORMATS,
+        default=None,
+        dest="output_format",
+        help="output type: sqlite, json, csv, or xlsx (config.ini, else sqlite)",
     )
 
     # Float, because 0.5 is a legal pause even though the default is 3.
@@ -339,6 +349,7 @@ def _cli_overrides(args: argparse.Namespace) -> dict:
         "sort": args.sort,
         "start_url": args.start_url,
         "database_path": args.database_path,
+        "output_format": args.output_format,
         "delay": args.delay,
         "proxy": args.proxy,
         "timeout": args.timeout,
@@ -374,6 +385,7 @@ def _format_show_config(config: RunConfig, ini_path: Path | None) -> str:
         f"categories: {categories}",
         f"sort: {config.sort}",
         f"database: {config.database_path}",
+        f"format: {config.output_format}",
         f"delay: {config.delay}",
         f"timeout: {config.timeout}",
         f"proxy: {proxy}",
@@ -421,7 +433,12 @@ def _format_summary(result: ScrapeResult, config) -> str:
         # No path, no stored total.
         lines.append("dry-run")
 
-    # A real write names the file and how big it is now.
+    # A real write names the file the user asked for.
+    elif result.export_path is not None:
+        # json, csv, or xlsx beside the SQLite store.
+        lines.append(str(result.export_path))
+
+    # sqlite is both the store and the output.
     else:
         # stored includes older runs.
         lines.append(f"{config.database_path}   {result.stored} stored")

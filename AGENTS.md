@@ -75,6 +75,7 @@ Python floor is `>=3.11`. Runtime libraries are `beautifulsoup4`, `lxml`, and `h
 | Categories | `-c`, `--category` | `categories` |
 | Sort | `--sort` | `sort` |
 | Database | `-o`, `--db` | `database` |
+| Output type | `--format` | `format` (`sqlite`, `json`, `csv`, `xlsx`) |
 | Delay | `-d`, `--delay` | `delay` |
 | Proxy | `--proxy` (repeatable) | `proxy` (comma-separated; rotate on ban or HTTP failure) |
 | Timeout | `--timeout` | `timeout` |

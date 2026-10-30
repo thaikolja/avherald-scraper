@@ -36,6 +36,7 @@ Complete rewrite of the 1.x script as a `src/` package. Listing headlines are st
 * db(upsert): write a batch with one `INSERT ... ON CONFLICT` and open SQLite in WAL mode
 * cli(progress): keep the progress bar on screen for the whole crawl, including the wait for each page
 * http(proxy): accept several proxies and rotate to the next host after a ban or a failed request
+* cli(format): add `--format` and `format` in `config.ini` for `sqlite`, `json`, `csv`, and `xlsx`
 * cli(output): replace the paragraph summary with the counts that changed
 * cli(help): point flag defaults at `config.ini`, with the built-in value as the fallback
 * cli(show): add `--show-config` to print the effective settings and exit without a crawl

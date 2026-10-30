@@ -151,7 +151,7 @@ class Client:
         # The same URL can be tried again.
         return True
 
-    def get(self, url: str) -> str:
+    def get(self, url: str) -> str | None:
         """Download `url` and return the HTML.
 
         A ban page or a transport error tries the next proxy. When every

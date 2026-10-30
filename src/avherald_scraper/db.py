@@ -155,6 +155,22 @@ class Database:
         # fetchone() is a row here, not None, because the query always returns.
         return int(row[0])
 
+    def fetch_articles(self) -> list[dict[str, str | None]]:
+        """Return every article row, oldest list date first."""
+
+        # Stable order so two exports of the same database match.
+        rows = self.conn.execute(
+            """
+            SELECT article_id, url, heading, list_date, list_date_iso,
+                   icon, category, source_page, first_seen_at, last_seen_at
+            FROM articles
+            ORDER BY list_date_iso, article_id
+            """
+        )
+
+        # sqlite3.Row is a mapping. A plain dict is what the writers expect.
+        return [dict(row) for row in rows]
+
     def article_ids(self) -> set[str]:
         """Return every stored id, so the crawl can skip them."""
 

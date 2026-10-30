@@ -54,6 +54,9 @@ DEFAULT_REQUEST_DELAY_SECONDS = 3.0
 # How many new headlines one run keeps when nobody says otherwise.
 DEFAULT_LIMIT = 50
 
+# The file the command writes. sqlite is the working database.
+OUTPUT_FORMATS = ("sqlite", "json", "csv", "xlsx")
+
 # Passed to httpx. A hung connection should not stall forever.
 DEFAULT_TIMEOUT_SECONDS = 20.0
 
@@ -81,8 +84,11 @@ class RunConfig:
     # Pause between downloads, in seconds.
     delay: float = DEFAULT_REQUEST_DELAY_SECONDS
 
-    # Where the SQLite file goes.
+    # Where the SQLite file goes. Resume always uses this file.
     database_path: Path = DEFAULT_DATABASE_PATH
+
+    # sqlite, json, csv, or xlsx. The last three are a copy beside the database.
+    output_format: str = "sqlite"
 
     # Site origin. The path and query are added later.
     base_url: str = DEFAULT_BASE_URL
@@ -408,6 +414,11 @@ def _apply(config: RunConfig, updates: Mapping[str, Any]) -> RunConfig:
             # One name from here on.
             key = "proxies"
 
+        # The ini key is `format`. The field is `output_format`.
+        if key == "format":
+            # Avoid clashing with the builtin name on the dataclass.
+            key = "output_format"
+
         # None means "this layer didn't set it".
         if key not in allowed or value is None:
             # Skip, and leave the lower layer's value in place.
@@ -415,6 +426,22 @@ def _apply(config: RunConfig, updates: Mapping[str, Any]) -> RunConfig:
 
         # Keep it for the conversion step below.
         cleaned[key] = value
+
+    # json, csv, and xlsx are copies. sqlite is the database itself.
+    if "output_format" in cleaned:
+        # Accept ".csv" as well as "csv".
+        fmt = str(cleaned["output_format"]).lower().lstrip(".")
+
+        # Anything else is a configuration error.
+        if fmt not in OUTPUT_FORMATS:
+            # main() prints this and exits 2.
+            raise ValueError(
+                "format must be sqlite, json, csv, or xlsx, "
+                f"not {cleaned['output_format']!r}"
+            )
+
+        # Store the bare name.
+        cleaned["output_format"] = fmt
 
     # Proxies arrive as a string, a list, or a tuple depending on the source.
     if "proxies" in cleaned:
